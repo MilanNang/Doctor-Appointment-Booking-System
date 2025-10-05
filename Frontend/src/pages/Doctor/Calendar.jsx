@@ -1,5 +1,6 @@
-// src/pages/SetAvailability.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import API from "../util/api";
+import { useSelector } from "react-redux";
 
 const days = [
   "Sunday",
@@ -32,33 +33,35 @@ const durationOptions = [
 ];
 
 export default function SetAvailability() {
-  const [availability, setAvailability] = useState({
-    Sunday: [],
-    Monday: [{ start: "9:00am", end: "5:00pm" }],
-    Tuesday: [],
-    Wednesday: [],
-    Thursday: [],
-    Friday: [],
-    Saturday: [],
-  });
+  const { user } = useSelector((state) => state.auth);
 
-  const [durations, setDurations] = useState({
-    Sunday: 30,
-    Monday: 30,
-    Tuesday: 30,
-    Wednesday: 30,
-    Thursday: 30,
-    Friday: 30,
-    Saturday: 30,
-  });
-
+  const [availability, setAvailability] = useState({});
+  const [durations, setDurations] = useState({});
   const [copyPopup, setCopyPopup] = useState(null);
   const [copySelection, setCopySelection] = useState([]);
 
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      try {
+        const { data } = await API.get(`/doctors/me`);
+        const avail = data.availability || {};
+        setAvailability(avail);
+
+        const dur = {};
+        days.forEach((d) => (dur[d] = avail[d]?.[0]?.duration || 30));
+        setDurations(dur);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchAvailability();
+  }, [user]);
+
   const handleAddSlot = (day) => {
+    const slots = availability[day] || [];
     setAvailability({
       ...availability,
-      [day]: [...availability[day], { start: "9:00am", end: "5:00pm" }],
+      [day]: [...slots, { start: "9:00am", end: "5:00pm", duration: durations[day] }],
     });
   };
 
@@ -76,22 +79,9 @@ export default function SetAvailability() {
 
   const handleDurationChange = (day, value) => {
     setDurations({ ...durations, [day]: value });
-  };
-
-  const handleApplyCopy = (sourceDay) => {
-    const selectedDays = copySelection;
-    const updatedAvailability = { ...availability };
-    const updatedDurations = { ...durations };
-
-    selectedDays.forEach((targetDay) => {
-      updatedAvailability[targetDay] = [...availability[sourceDay]];
-      updatedDurations[targetDay] = durations[sourceDay];
-    });
-
-    setAvailability(updatedAvailability);
-    setDurations(updatedDurations);
-    setCopyPopup(null);
-    setCopySelection([]);
+    const slots = availability[day] || [];
+    slots.forEach((s) => (s.duration = value));
+    setAvailability({ ...availability, [day]: slots });
   };
 
   const toggleDaySelection = (day) => {
@@ -100,76 +90,88 @@ export default function SetAvailability() {
     );
   };
 
+  const handleApplyCopy = (sourceDay) => {
+    const updatedAvailability = { ...availability };
+    const updatedDurations = { ...durations };
+    copySelection.forEach((targetDay) => {
+      updatedAvailability[targetDay] = [...availability[sourceDay]];
+      updatedDurations[targetDay] = durations[sourceDay];
+    });
+    setAvailability(updatedAvailability);
+    setDurations(updatedDurations);
+    setCopyPopup(null);
+    setCopySelection([]);
+  };
+
+  const handleSave = async () => {
+    try {
+      const payload = {};
+      Object.keys(availability).forEach((day) => {
+        payload[day] = availability[day].map((slot) => ({
+          start: slot.start,
+          end: slot.end,
+          duration: slot.duration,
+        }));
+      });
+
+      const { data } = await API.put("/doctors/availability", { availability: payload });
+      setAvailability(data.availability);
+      alert("Availability saved successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Error saving availability");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6 flex justify-center">
       <div className="w-full max-w-3xl bg-white shadow-lg rounded-2xl p-6">
-        <h1 className="text-3xl font-bold text-gray-800 mb-6">
-          Weekly Hours
-        </h1>
-
+        <h1 className="text-3xl font-bold text-gray-800 mb-6">Set Weekly Availability</h1>
         <div className="space-y-5">
           {days.map((day) => {
-            const slots = availability[day];
-            const interval = durations[day];
+            const slots = availability[day] || [];
+            const interval = durations[day] || 30;
             const timeOptions = generateTimes(interval);
 
             return (
-              <div
-                key={day}
-                className="flex items-start bg-gray-50 hover:bg-gray-100 p-3 rounded-xl transition"
-              >
-                {/* Day Label */}
-                <div className="w-28 text-gray-700 font-semibold text-lg">
-                  {day}
-                </div>
-
-                {/* Slots */}
+              <div key={day} className="flex items-start bg-gray-50 hover:bg-gray-100 p-3 rounded-xl transition">
+                <div className="w-28 text-gray-700 font-semibold text-lg">{day}</div>
                 <div className="flex-1 space-y-3">
                   {slots.length > 0 ? (
                     slots.map((slot, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center space-x-4 text-base"
-                      >
-                        {/* Start time */}
-                        <input
-                          list={`times-${day}-${index}`}
+                      <div key={index} className="flex items-center space-x-4 text-base">
+                        {/* ✅ Start Time Dropdown */}
+                        <select
                           value={slot.start}
-                          onChange={(e) =>
-                            handleChange(day, index, "start", e.target.value)
-                          }
-                          className="border rounded-lg px-2 h-10 text-base w-32 focus:ring-2 focus:ring-blue-400"
-                        />
-                        <datalist id={`times-${day}-${index}`}>
+                          onChange={(e) => handleChange(day, index, "start", e.target.value)}
+                          className="border rounded-lg px-2 h-10 text-base w-36 focus:ring-2 focus:ring-blue-400"
+                        >
                           {timeOptions.map((time) => (
-                            <option key={time} value={time} />
+                            <option key={time} value={time}>
+                              {time}
+                            </option>
                           ))}
-                        </datalist>
+                        </select>
 
                         <span className="text-gray-500">–</span>
 
-                        {/* End time */}
-                        <input
-                          list={`times-end-${day}-${index}`}
+                        {/* ✅ End Time Dropdown */}
+                        <select
                           value={slot.end}
-                          onChange={(e) =>
-                            handleChange(day, index, "end", e.target.value)
-                          }
-                          className="border rounded-lg px-2 h-10 text-base w-32 focus:ring-2 focus:ring-blue-400"
-                        />
-                        <datalist id={`times-end-${day}-${index}`}>
+                          onChange={(e) => handleChange(day, index, "end", e.target.value)}
+                          className="border rounded-lg px-2 h-10 text-base w-36 focus:ring-2 focus:ring-blue-400"
+                        >
                           {timeOptions.map((time) => (
-                            <option key={time} value={time} />
+                            <option key={time} value={time}>
+                              {time}
+                            </option>
                           ))}
-                        </datalist>
+                        </select>
 
-                        {/* Duration - only for first slot */}
                         {index === 0 && (
                           <select
                             value={durations[day]}
-                            onChange={(e) =>
-                              handleDurationChange(day, parseInt(e.target.value))
-                            }
+                            onChange={(e) => handleDurationChange(day, parseInt(e.target.value))}
                             className="border rounded-lg px-2 h-10 text-base w-28 focus:ring-2 focus:ring-blue-400"
                           >
                             {durationOptions.map((d) => (
@@ -180,36 +182,22 @@ export default function SetAvailability() {
                           </select>
                         )}
 
-                        {/* Remove */}
-                        <button
-                          onClick={() => handleRemoveSlot(day, index)}
-                          className="text-red-500 hover:text-red-700 text-xl"
-                        >
+                        <button onClick={() => handleRemoveSlot(day, index)} className="text-red-500 hover:text-red-700 text-xl">
                           ✕
                         </button>
-
-                        {/* Add button (moved to FIRST ROW) */}
                         {index === 0 && (
-                          <button
-                            onClick={() => handleAddSlot(day)}
-                            className="text-green-500 hover:text-green-700 text-xl"
-                          >
+                          <button onClick={() => handleAddSlot(day)} className="text-green-500 hover:text-green-700 text-xl">
                             ＋
                           </button>
                         )}
-
-                        {/* Copy button (only first row) */}
                         {index === 0 && (
                           <div className="relative">
                             <button
-                              onClick={() =>
-                                setCopyPopup(copyPopup === day ? null : day)
-                              }
+                              onClick={() => setCopyPopup(copyPopup === day ? null : day)}
                               className="ml-2 text-blue-500 hover:text-blue-700 text-xl"
                             >
                               ⧉
                             </button>
-
                             {copyPopup === day && (
                               <div className="absolute left-8 top-0 z-10 bg-white border rounded-xl shadow-lg w-60 p-4">
                                 <h3 className="text-sm font-semibold text-gray-600 mb-2">
@@ -217,10 +205,7 @@ export default function SetAvailability() {
                                 </h3>
                                 <div className="space-y-2 max-h-48 overflow-y-auto">
                                   {days.map((d) => (
-                                    <label
-                                      key={d}
-                                      className="flex items-center text-base cursor-pointer"
-                                    >
+                                    <label key={d} className="flex items-center text-base cursor-pointer">
                                       <input
                                         type="checkbox"
                                         checked={copySelection.includes(d)}
@@ -246,10 +231,7 @@ export default function SetAvailability() {
                   ) : (
                     <p className="text-base text-gray-400">
                       Unavailable{" "}
-                      <button
-                        onClick={() => handleAddSlot(day)}
-                        className="text-blue-500 hover:underline ml-2"
-                      >
+                      <button onClick={() => handleAddSlot(day)} className="text-blue-500 hover:underline ml-2">
                         ＋ Add
                       </button>
                     </p>
@@ -259,6 +241,12 @@ export default function SetAvailability() {
             );
           })}
         </div>
+        <button
+          onClick={handleSave}
+          className="mt-6 w-full bg-yellow-500 hover:bg-yellow-600 text-white py-3 rounded-lg font-semibold"
+        >
+          Save Weekly Schedule
+        </button>
       </div>
     </div>
   );

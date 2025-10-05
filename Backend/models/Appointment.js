@@ -10,7 +10,7 @@ const appointmentSchema = new mongoose.Schema({
   enum: ["pending", "approved", "cancelled", "completed", "rescheduled"], // ✅ added
   default: "pending"
 }
-,
+, fees: { type: Number, default: 0 },
   paymentStatus: {
     type: String,
     enum: ["pending", "paid"],

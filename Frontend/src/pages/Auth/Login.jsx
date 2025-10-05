@@ -1,14 +1,20 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import API from "../util/api";
+import { loginSuccess } from "../../Redux/authSlice";
+import { setDoctorProfile } from "../../Redux/doctorSlice";
+import { setPatientData } from "../../Redux/patientSlice";
 
 export default function Login() {
   const [role, setRole] = useState("patient");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // Handle Login Button Click
   const handleLogin = async () => {
     if (!email || !password) {
       alert("Please enter both email and password");
@@ -16,30 +22,28 @@ export default function Login() {
     }
 
     try {
-      // 🔹 Later: Replace with real API call using Axios
-      // const { data } = await axios.post("/api/users/login", { email, password, role });
-      // localStorage.setItem("token", data.token);
-      // localStorage.setItem("user", JSON.stringify(data.user));
+      const { data } = await API.post("/auth/login", { email, password });
 
-      // 🔹 Demo Logic (no backend)
-      localStorage.setItem(
-        "user",
-        JSON.stringify({ email, role, token: "demo-token" })
-      );
+      // Save user data in Redux
+      dispatch(loginSuccess({ user: data, token: data.token }));
 
-      // Redirect by role
-      if (role === "doctor") navigate("/doctor");
-      else navigate("/patient");
+      // Set doctor or patient data in corresponding slice
+      if (data.role === "doctor") {
+        dispatch(setDoctorProfile(data));
+        navigate("/doctor");
+      } else {
+        dispatch(setPatientData(data));
+        navigate("/patient/browse-services");
+      }
     } catch (error) {
       console.error("Login failed:", error);
-      alert("Invalid email or password");
+      alert(error.response?.data?.message || "Invalid email or password");
     }
   };
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gradient-to-r from-yellow-50 to-yellow-100">
       <div className="bg-white p-8 rounded-2xl shadow-md w-96">
-        {/* App Title */}
         <h1 className="text-2xl font-bold text-center text-yellow-600 mb-2">
           Appointment App
         </h1>
@@ -73,9 +77,7 @@ export default function Login() {
 
         {/* Email */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700">
-            Email
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Email</label>
           <input
             type="email"
             value={email}
@@ -87,9 +89,7 @@ export default function Login() {
 
         {/* Password */}
         <div className="mb-2 relative">
-          <label className="block text-sm font-medium text-gray-700">
-            Password
-          </label>
+          <label className="block text-sm font-medium text-gray-700">Password</label>
           <input
             type={showPassword ? "text" : "password"}
             value={password}
@@ -112,7 +112,6 @@ export default function Login() {
           </a>
         </div>
 
-        {/* Sign In Button */}
         <button
           onClick={handleLogin}
           className={`w-full py-3 rounded-lg font-semibold text-white transition ${
@@ -124,22 +123,15 @@ export default function Login() {
           Sign In as {role === "patient" ? "Patient" : "Doctor"}
         </button>
 
-        {/* Footer Links */}
         <div className="mt-6 text-center text-sm text-gray-700 space-y-2">
           <p>
             Don’t have an account?{" "}
-            <Link
-              to="/signup"
-              className="text-yellow-600 font-semibold hover:underline"
-            >
+            <Link to="/signup" className="text-yellow-600 font-semibold hover:underline">
               Sign up
             </Link>
           </p>
           <p>
-            <Link
-              to="/"
-              className="text-purple-500 font-semibold hover:underline"
-            >
+            <Link to="/" className="text-purple-500 font-semibold hover:underline">
               Go to Home
             </Link>
           </p>

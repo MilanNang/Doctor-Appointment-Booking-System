@@ -30,6 +30,7 @@ export const bookAppointment = async (req, res) => {
       date,
       time,
       status: "pending",
+      fees: doctor.fees || 0,
     });
 
     console.log("✅ Appointment created:", appointment._id);
