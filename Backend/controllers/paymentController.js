@@ -62,3 +62,10 @@ export const getAllPayments = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+export const getMyPayments = async (req, res) => {
+  const payments = await Payment.find({ patient: req.user.id })
+    .populate("doctor", "name email")
+    .populate("appointment");
+  res.json(payments);
+};

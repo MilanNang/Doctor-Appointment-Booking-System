@@ -3,6 +3,7 @@ import {
   createCashPayment,
   confirmCashPayment,
   getAllPayments,
+  getMyPayments
 } from "../controllers/paymentController.js";
 import {
   protect,
@@ -27,5 +28,6 @@ router.put("/:id/confirm", protect, (req, res, next) => {
 
 // ✅ Admin gets all payments
 router.get("/", protect, adminOnly, getAllPayments);
+router.get("/my", protect, patientOnly, getMyPayments);
 
 export default router;

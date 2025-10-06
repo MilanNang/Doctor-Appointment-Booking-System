@@ -151,3 +151,20 @@ export const getAllAppointments = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Doctor approves or cancels appointment
+export const updateAppointmentStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const appointment = await Appointment.findById(req.params.id);
+
+    if (!appointment) return res.status(404).json({ message: "Not found" });
+
+    appointment.status = status;
+    await appointment.save();
+
+    res.json({ message: "Status updated", appointment });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

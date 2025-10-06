@@ -13,7 +13,6 @@ export default function Sidebar() {
   const menu = [
     { name: "Dashboard", icon: HomeIcon, path: "/doctor", exact: true }, // exact match
     { name: "Profile", icon: UserIcon, path: "/doctor/profile" },
-    { name: "Services", icon: GiftIcon, path: "/doctor/services" },
     { name: "Calendar", icon: CalendarIcon, path: "/doctor/calendar" },
     { name: "Bookings", icon: BookOpenIcon, path: "/doctor/bookings" },
   ];

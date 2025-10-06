@@ -5,7 +5,8 @@ import {
   cancelAppointment,
   rescheduleAppointment,
   getDoctorAppointments,
-  getAllAppointments
+  getAllAppointments,
+  updateAppointmentStatus
 } from "../controllers/appointmentController.js";
 
 import { protect, patientOnly, doctorOnly, adminOnly } from "../middleware/authMiddleware.js";
@@ -20,6 +21,7 @@ router.put("/:id/reschedule", protect, patientOnly, rescheduleAppointment);
 
 // Doctor actions
 router.get("/doctor", protect, doctorOnly, getDoctorAppointments);
+router.put("/:id", protect, doctorOnly, updateAppointmentStatus);
 
 // Admin actions
 router.get("/all", protect, adminOnly, getAllAppointments);

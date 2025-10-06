@@ -124,7 +124,7 @@ export default function Header() {
                 </li>
                 <li>
                   <button
-                    onClick={() => navigate("/billing")}
+                    onClick={() => navigate("/doctor/billing")}
                     className="w-full text-left block px-4 py-2 text-sm hover:bg-yellow-50"
                   >
                     Billing

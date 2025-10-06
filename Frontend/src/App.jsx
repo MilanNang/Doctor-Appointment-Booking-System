@@ -9,9 +9,10 @@ import Signup from './pages/Auth/Signup';
 import DoctorLayout from "./Layouts/DoctorLayout";
 import DoctorDashboard from "./pages/Doctor/Dashboard";
 import DoctorProfile from "./pages/Doctor/Profile";
-import DoctorServices from "./pages/Doctor/Services";
+import Billing from "./pages/Doctor/Billing";
 import DoctorCalendar from "./pages/Doctor/Calendar";
 import DoctorBooking from "./pages/Doctor/Booking";
+
 
 // Patient imports
 import PatientLayout from "./Layouts/PatientLayout";
@@ -41,9 +42,9 @@ function App() {
         <Route path="/doctor" element={<DoctorLayout />}>
           <Route index element={<DoctorDashboard />} />
           <Route path="profile" element={<DoctorProfile />} />
-          <Route path="services" element={<DoctorServices />} />
           <Route path="calendar" element={<DoctorCalendar />} />
           <Route path="bookings" element={<DoctorBooking />} />
+          <Route path="billing" element={<Billing />} />
         </Route>
 
         {/* Patient side */}
