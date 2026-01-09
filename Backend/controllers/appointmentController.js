@@ -75,8 +75,16 @@ export const bookAppointment = async (req, res) => {
 export const getPatientAppointments = async (req, res) => {
   try {
     const appointments = await Appointment.find({ patient: req.user._id })
-      .populate("doctor", "specialization fees")
-      .populate("patient", "name email");
+      .populate({
+        path: "doctor",
+        select: "specialization fees user",
+        populate: {
+          path: "user",
+          select: "name email"
+        }
+      })
+      .populate("patient", "name email")
+      .sort({ date: -1, time: 1 });
 
     res.json(appointments);
   } catch (error) {
@@ -129,9 +137,25 @@ export const rescheduleAppointment = async (req, res) => {
 // 👨‍⚕️ Doctor - get all appointments for logged-in doctor
 export const getDoctorAppointments = async (req, res) => {
   try {
-    const appointments = await Appointment.find({ doctor: req.user._id })
+    // 1️⃣ Find doctor document using logged-in USER ID
+    const doctorDoc = await Doctor.findOne({ user: req.user._id });
+
+    if (!doctorDoc) {
+      return res.status(404).json({ message: "Doctor profile not found" });
+    }
+
+    // 2️⃣ Find appointments linked to DOCTOR DOCUMENT ID with proper population
+    const appointments = await Appointment.find({ doctor: doctorDoc._id })
       .populate("patient", "name email")
-      .populate("doctor", "specialization");
+      .populate({
+        path: "doctor",
+        select: "specialization fees user",
+        populate: {
+          path: "user",
+          select: "name email"
+        }
+      })
+      .sort({ date: -1, time: 1 });
 
     res.json(appointments);
   } catch (error) {
@@ -143,8 +167,16 @@ export const getDoctorAppointments = async (req, res) => {
 export const getAllAppointments = async (req, res) => {
   try {
     const appointments = await Appointment.find()
-      .populate("doctor", "specialization")
-      .populate("patient", "name email");
+      .populate({
+        path: "doctor",
+        select: "specialization fees user",
+        populate: {
+          path: "user",
+          select: "name email"
+        }
+      })
+      .populate("patient", "name email")
+      .sort({ date: -1, time: 1 });
 
     res.json(appointments);
   } catch (error) {
@@ -156,14 +188,47 @@ export const getAllAppointments = async (req, res) => {
 export const updateAppointmentStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    const appointment = await Appointment.findById(req.params.id);
+    
+    // Validate status
+    const validStatuses = ["pending", "approved", "cancelled", "completed", "rescheduled"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
 
-    if (!appointment) return res.status(404).json({ message: "Not found" });
+    const appointment = await Appointment.findById(req.params.id)
+      .populate("patient", "name email")
+      .populate({
+        path: "doctor",
+        select: "user",
+        populate: {
+          path: "user",
+          select: "name email"
+        }
+      });
 
+    if (!appointment) return res.status(404).json({ message: "Appointment not found" });
+
+    // Update status
     appointment.status = status;
     await appointment.save();
 
-    res.json({ message: "Status updated", appointment });
+    // Send notification email to patient
+    try {
+      if (status === "approved" || status === "cancelled") {
+        await sendEmail(
+          appointment.patient.email,
+          `Appointment ${status === "approved" ? "Approved" : "Cancelled"}`,
+          `<h2>Hi ${appointment.patient.name},</h2>
+           <p>Your appointment with <strong>Dr. ${appointment.doctor.user?.name}</strong> has been <b>${status}</b>.</p>
+           <p>Date: ${appointment.date}</p>
+           <p>Time: ${appointment.time}</p>`
+        );
+      }
+    } catch (emailError) {
+      console.error("Email notification failed:", emailError);
+    }
+
+    res.json({ message: "Status updated successfully", appointment });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

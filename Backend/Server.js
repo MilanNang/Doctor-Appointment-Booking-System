@@ -33,10 +33,19 @@ app.use("/api/appointments", appointmentRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/notifications", notificationRoutes);
 
-// Database connection
-mongoose.connect(process.env.MONGO_URI)
+// Database connection with timeout settings
+mongoose.connect(process.env.MONGO_URI, {
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+  connectTimeoutMS: 10000,
+  retryWrites: true,
+  w: 'majority'
+})
   .then(() => console.log("✅ MongoDB connected"))
-  .catch(err => console.error("❌ MongoDB error:", err));
+  .catch(err => {
+    console.error("❌ MongoDB error:", err.message);
+    process.exit(1);
+  });
 
 // Routes (example)
 app.get("/", (req, res) => {

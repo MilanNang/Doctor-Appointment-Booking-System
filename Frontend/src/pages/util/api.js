@@ -6,9 +6,9 @@ const API = axios.create({
 
 // 🧠 Optional: add token automatically for logged-in users
 API.interceptors.request.use((req) => {
-  const user = JSON.parse(localStorage.getItem("user"));
-  if (user?.token) {
-    req.headers.Authorization = `Bearer ${user.token}`;
+  const auth = JSON.parse(localStorage.getItem("auth"));
+  if (auth?.token) {
+    req.headers.Authorization = `Bearer ${auth.token}`;
   }
   return req;
 });

@@ -1,29 +1,59 @@
 // src/Redux/authSlice.js
 import { createSlice } from "@reduxjs/toolkit";
 
-const storedUser = JSON.parse(localStorage.getItem("user")) || null;
+// ✅ Initialize from localStorage
+const storedAuth = localStorage.getItem("auth");
+let initialUser = null;
+let initialToken = null;
+
+if (storedAuth) {
+  try {
+    const parsed = JSON.parse(storedAuth);
+    initialUser = parsed.user;
+    initialToken = parsed.token;
+  } catch (e) {
+    console.error("Failed to parse stored auth:", e);
+    localStorage.removeItem("auth");
+  }
+}
 
 const authSlice = createSlice({
   name: "auth",
   initialState: {
-    user: storedUser,
-    token: localStorage.getItem("token") || null,
+    user: initialUser,
+    token: initialToken,
+    isAuthenticated: !!initialToken,
   },
   reducers: {
     loginSuccess: (state, action) => {
-      state.user = action.payload.user;
-      state.token = action.payload.token;
-      localStorage.setItem("user", JSON.stringify(action.payload.user));
-      localStorage.setItem("token", action.payload.token);
+      // ✅ Backend returns: { _id, name, email, role, token }
+      const { _id, name, email, role, token } = action.payload;
+      
+      state.user = { _id, name, email, role };
+      state.token = token;
+      state.isAuthenticated = true;
+
+      // ✅ Store as single object
+      localStorage.setItem("auth", JSON.stringify({
+        user: { _id, name, email, role },
+        token
+      }));
     },
     logout: (state) => {
       state.user = null;
       state.token = null;
-      localStorage.removeItem("user");
-      localStorage.removeItem("token");
+      state.isAuthenticated = false;
+      localStorage.removeItem("auth");
     },
+    updateUser: (state, action) => {
+      state.user = { ...state.user, ...action.payload };
+      localStorage.setItem("auth", JSON.stringify({
+        user: state.user,
+        token: state.token
+      }));
+    }
   },
 });
 
-export const { loginSuccess, logout } = authSlice.actions;
+export const { loginSuccess, logout, updateUser } = authSlice.actions;
 export default authSlice.reducer;

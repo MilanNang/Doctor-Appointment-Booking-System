@@ -24,8 +24,8 @@ export default function Login() {
     try {
       const { data } = await API.post("/auth/login", { email, password });
 
-      // Save user data in Redux
-      dispatch(loginSuccess({ user: data, token: data.token }));
+      // Save user data in Redux (payload should match authSlice expected shape)
+      dispatch(loginSuccess(data));
 
       // Set doctor or patient data in corresponding slice
       if (data.role === "doctor") {

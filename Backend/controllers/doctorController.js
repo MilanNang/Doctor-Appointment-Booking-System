@@ -171,7 +171,7 @@ export const getDoctorDashboard = async (req, res) => {
 // Get all approved doctors
 export const getAllDoctors = async (req, res) => {
   try {
-    const doctors = await Doctor.find({ isApproved: true }).populate("user", "name email");
+    const doctors = await Doctor.find().populate("user", "name email");
     res.json(doctors);
   } catch (error) {
     res.status(500).json({ error: error.message });

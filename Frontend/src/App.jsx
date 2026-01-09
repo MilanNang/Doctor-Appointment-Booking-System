@@ -52,7 +52,7 @@ function App() {
           <Route index element={<PatientDashboard />} />
           <Route path="browse-services" element={<BrowseServices />} />
           <Route path="appointments" element={<MyBookings />} />
-          <Route path="calendar" element={<PatientCalendar />} />
+          <Route path="calendar/:id" element={<PatientCalendar />} />
         </Route>
 
         {/* Admin side */}

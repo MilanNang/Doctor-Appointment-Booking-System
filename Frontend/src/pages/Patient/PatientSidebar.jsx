@@ -1,11 +1,18 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Home, Search, Calendar, BookOpen, User, Settings, LogOut } from "lucide-react";
+import { useSelector, useDispatch } from "react-redux";
+import { logout } from "../../Redux/authSlice";
 
 export default function PatientSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
+  
+  // Get user data from Redux
+  const { user } = useSelector((state) => state.auth);
 
   const navItems = [
     { path: "/patient/", label: "Dashboard", icon: <Home size={18} /> },
@@ -35,7 +42,11 @@ export default function PatientSidebar() {
         </div>
 
         {/* Patient Info */}
-       
+        <div className="mb-6 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+          <p className="text-xs text-gray-500 mb-1">Patient</p>
+          <p className="text-sm font-semibold text-gray-800">{user?.name || "Patient"}</p>
+          <p className="text-xs text-gray-500">{user?.email || "email@example.com"}</p>
+        </div>
 
         {/* Navigation */}
         <nav className="space-y-3">
@@ -62,11 +73,11 @@ export default function PatientSidebar() {
           className="flex items-center w-full space-x-3 p-2 rounded-md hover:bg-gray-50"
         >
           <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 font-bold">
-            JD
+            {user?.name?.charAt(0)?.toUpperCase() || "P"}
           </div>
           <div className="flex-1 text-left">
-            <p className="text-sm font-semibold">John Doe</p>
-            <p className="text-xs text-gray-500">demo@123</p>
+            <p className="text-sm font-semibold">{user?.name || "Patient"}</p>
+            <p className="text-xs text-gray-500 capitalize">{user?.role || "patient"}</p>
           </div>
           <svg
             className={`w-4 h-4 transform transition ${open ? "rotate-180" : ""}`}
@@ -88,16 +99,25 @@ export default function PatientSidebar() {
             <Link
               to="/patient/profile"
               className="flex items-center gap-2 px-4 py-2 text-sm w-full hover:bg-gray-50"
+              onClick={() => setOpen(false)}
             >
               <User size={16} /> View Profile
             </Link>
             <Link
               to="/patient/settings"
               className="flex items-center gap-2 px-4 py-2 text-sm w-full hover:bg-gray-50"
+              onClick={() => setOpen(false)}
             >
               <Settings size={16} /> Account Settings
             </Link>
-            <button className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 w-full hover:bg-red-50">
+            <button 
+              onClick={() => {
+                dispatch(logout());
+                navigate("/login");
+                setOpen(false);
+              }}
+              className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 w-full hover:bg-red-50"
+            >
               <LogOut size={16} /> Logout
             </button>
           </div>
