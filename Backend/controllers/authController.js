@@ -95,6 +95,42 @@ export const loginUser = async (req, res) => {
       return res.status(401).json({ message: "Please verify your email before logging in." });
     }
 
+    // Set httpOnly cookie with token
+    res.cookie("token", generateToken(user._id, user.role), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      token: generateToken(user._id, user.role),
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// =======================
+// @desc   Verify authentication from cookie
+// @route  GET /api/auth/verify
+// @access Private
+// =======================
+export const verifyAuth = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
     res.json({
       _id: user._id,
       name: user.name,

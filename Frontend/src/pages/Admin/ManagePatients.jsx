@@ -1,40 +1,53 @@
-import { useState } from "react";
-import { Search, Eye, XCircle, CheckCircle, Trash2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { Search, Eye, XCircle, CheckCircle, Trash2, Loader2 } from "lucide-react";
+import API from "../util/api";
+import { showToast } from "../../Redux/toastSlice";
 
 export default function ManagePatients() {
+  const dispatch = useDispatch();
   const [search, setSearch] = useState("");
+  const [patients, setPatients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState({ id: null, type: null });
 
-  // Sample patients
-  const [patients, setPatients] = useState([
-    {
-      id: 1,
-      name: "John Doe",
-      email: "john.doe@email.com",
-      phone: "+1 234 567 890",
-      status: "Active",
-    },
-    {
-      id: 2,
-      name: "Jane Smith",
-      email: "jane.smith@email.com",
-      phone: "+1 987 654 321",
-      status: "Blocked",
-    },
-    {
-      id: 3,
-      name: "David Johnson",
-      email: "david.j@email.com",
-      phone: "+1 456 789 123",
-      status: "Active",
-    },
-  ]);
+  useEffect(() => {
+    fetchPatients();
+  }, []);
 
-  const handleAction = (id, action) => {
-    setPatients((prev) =>
-      prev.map((p) =>
-        p.id === id ? { ...p, status: action } : p
-      )
-    );
+  const fetchPatients = async () => {
+    try {
+      setLoading(true);
+      const res = await API.get("/admin/patients");
+      const patientsList = Array.isArray(res.data) ? res.data : [];
+      setPatients(
+        patientsList.map((p) => ({
+          id: p._id,
+          name: p.name || "N/A",
+          email: p.email || "N/A",
+          phone: p.phone || "N/A",
+          status: "Active",
+        }))
+      );
+    } catch (error) {
+      console.error("Failed to fetch patients:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      setActionLoading({ id, type: "delete" });
+      await API.delete(`/admin/patients/${id}`);
+      setPatients((prev) => prev.filter((p) => p.id !== id));
+      dispatch(showToast({ message: "Patient deleted successfully", type: "success" }));
+    } catch (error) {
+      console.error("Delete failed:", error);
+      dispatch(showToast({ message: "Failed to delete patient", type: "error" }));
+    } finally {
+      setActionLoading({ id: null, type: null });
+    }
   };
 
   const filteredPatients = patients.filter(
@@ -43,6 +56,10 @@ export default function ManagePatients() {
       p.email.toLowerCase().includes(search.toLowerCase()) ||
       p.phone.includes(search)
   );
+
+  if (loading) {
+    return <div className="text-center py-8">Loading patients...</div>;
+  }
 
   return (
     <div>
@@ -102,30 +119,16 @@ export default function ManagePatients() {
                     <button className="p-2 rounded hover:bg-slate-100">
                       <Eye className="w-4 h-4 text-blue-600" />
                     </button>
-                    {p.status === "Active" ? (
-                      <button
-                        onClick={() => handleAction(p.id, "Blocked")}
-                        className="p-2 rounded hover:bg-slate-100"
-                      >
-                        <XCircle className="w-4 h-4 text-red-600" />
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleAction(p.id, "Active")}
-                        className="p-2 rounded hover:bg-slate-100"
-                      >
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                      </button>
-                    )}
                     <button
-                      onClick={() =>
-                        setPatients((prev) =>
-                          prev.filter((pt) => pt.id !== p.id)
-                        )
-                      }
-                      className="p-2 rounded hover:bg-slate-100"
+                      onClick={() => handleDelete(p.id)}
+                      disabled={actionLoading.id === p.id && actionLoading.type === "delete"}
+                      className="p-2 rounded hover:bg-slate-100 disabled:opacity-50"
                     >
-                      <Trash2 className="w-4 h-4 text-slate-600" />
+                      {actionLoading.id === p.id && actionLoading.type === "delete" ? (
+                        <Loader2 className="animate-spin w-4 h-4 text-slate-600" />
+                      ) : (
+                        <Trash2 className="w-4 h-4 text-slate-600" />
+                      )}
                     </button>
                   </td>
                 </tr>

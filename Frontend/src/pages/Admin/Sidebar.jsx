@@ -1,4 +1,8 @@
 import { NavLink } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import API from "../util/api";
+import { logout } from "../../Redux/authSlice";
 import {
   LayoutDashboard,
   Stethoscope,
@@ -8,8 +12,24 @@ import {
   Settings,
   FileText
 } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 export default function AdminSidebar() {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await API.post("/auth/logout");
+      dispatch(logout());
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+      dispatch(logout());
+      navigate("/login");
+    }
+  };
+
   return (
     <aside className="w-64 bg-white shadow-md h-screen sticky top-0 flex flex-col">
       {/* Logo */}
@@ -28,6 +48,13 @@ export default function AdminSidebar() {
         <SidebarLink to="/admin/settings" icon={<Settings size={20} />} label="Settings" />
         
 
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition text-red-600 hover:bg-red-100 w-full mt-4"
+        >
+          <LogOut size={20} />
+          Logout
+        </button>
       </nav>
 
       {/* Footer */}

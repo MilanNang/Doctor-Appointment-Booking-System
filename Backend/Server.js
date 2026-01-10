@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
 import morgan from "morgan";
+import cookieParser from "cookie-parser";
 
 
 import doctorRoutes from "./routes/doctorRoutes.js";
@@ -22,7 +23,11 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: process.env.CLIENT_URL || "http://localhost:5173",
+  credentials: true // Allow credentials (cookies)
+}));
+app.use(cookieParser());
 app.use(morgan("dev"));
 
 app.use("/api/doctors", doctorRoutes);

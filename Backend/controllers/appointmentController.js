@@ -2,6 +2,7 @@ import Appointment from "../models/Appointment.js";
 import Doctor from "../models/Doctor.js";
 import { sendEmail } from "../utils/sendEmail.js";
 import User from "../models/User.js";
+import Notification from "../models/notification.js";
 
 // 🩺 Book Appointment
 export const bookAppointment = async (req, res) => {
@@ -34,6 +35,17 @@ export const bookAppointment = async (req, res) => {
     });
 
     console.log("✅ Appointment created:", appointment._id);
+
+    // 🔔 Create notification for doctor
+    try {
+      await Notification.create({
+        user: doctor.user._id,
+        message: `New appointment from ${patientName} on ${date} at ${time}`,
+        type: "appointment",
+      });
+    } catch (notifError) {
+      console.error("❌ Notification creation failed:", notifError.message);
+    }
 
     // ✉️ Send emails
     try {
@@ -98,12 +110,25 @@ export const cancelAppointment = async (req, res) => {
     const appointment = await Appointment.findOne({
       _id: req.params.id,
       patient: req.user._id,
-    });
+    })
+      .populate("doctor", "user")
+      .populate("patient", "name");
 
     if (!appointment) return res.status(404).json({ message: "Appointment not found" });
 
     appointment.status = "cancelled";
     await appointment.save();
+
+    // 🔔 Create notification for doctor
+    try {
+      await Notification.create({
+        user: appointment.doctor.user,
+        message: `Appointment with ${appointment.patient.name} on ${appointment.date} has been cancelled by the patient.`,
+        type: "appointment",
+      });
+    } catch (notifError) {
+      console.error("❌ Notification creation failed:", notifError.message);
+    }
 
     res.json({ message: "Appointment cancelled successfully", appointment });
   } catch (error) {
@@ -119,7 +144,9 @@ export const rescheduleAppointment = async (req, res) => {
     const appointment = await Appointment.findOne({
       _id: req.params.id,
       patient: req.user._id,
-    });
+    })
+      .populate("doctor", "user")
+      .populate("patient", "name");
 
     if (!appointment) return res.status(404).json({ message: "Appointment not found" });
 
@@ -127,6 +154,17 @@ export const rescheduleAppointment = async (req, res) => {
     appointment.time = time;
     appointment.status = "rescheduled";
     await appointment.save();
+
+    // 🔔 Create notification for doctor
+    try {
+      await Notification.create({
+        user: appointment.doctor.user,
+        message: `Appointment with ${appointment.patient.name} has been rescheduled to ${date} at ${time}.`,
+        type: "appointment",
+      });
+    } catch (notifError) {
+      console.error("❌ Notification creation failed:", notifError.message);
+    }
 
     res.json({ message: "Appointment rescheduled successfully", appointment });
   } catch (error) {
@@ -190,7 +228,7 @@ export const updateAppointmentStatus = async (req, res) => {
     const { status } = req.body;
     
     // Validate status
-    const validStatuses = ["pending", "approved", "cancelled", "completed", "rescheduled"];
+    const validStatuses = ["pending", "approved", "in-progress", "cancelled", "completed", "rescheduled"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
@@ -202,7 +240,7 @@ export const updateAppointmentStatus = async (req, res) => {
         select: "user",
         populate: {
           path: "user",
-          select: "name email"
+          select: "name email _id"
         }
       });
 
@@ -211,6 +249,30 @@ export const updateAppointmentStatus = async (req, res) => {
     // Update status
     appointment.status = status;
     await appointment.save();
+
+    // 🔔 Create notification for patient
+    try {
+      let message = "";
+      if (status === "approved") {
+        message = `Your appointment with Dr. ${appointment.doctor.user?.name} on ${appointment.date} at ${appointment.time} has been approved!`;
+      } else if (status === "cancelled") {
+        message = `Your appointment with Dr. ${appointment.doctor.user?.name} on ${appointment.date} has been cancelled.`;
+      } else if (status === "in-progress") {
+        message = `Your appointment with Dr. ${appointment.doctor.user?.name} is now in progress.`;
+      } else if (status === "completed") {
+        message = `Your appointment with Dr. ${appointment.doctor.user?.name} has been completed. Thank you!`;
+      }
+
+      if (message) {
+        await Notification.create({
+          user: appointment.patient._id,
+          message: message,
+          type: "appointment",
+        });
+      }
+    } catch (notifError) {
+      console.error("❌ Notification creation failed:", notifError.message);
+    }
 
     // Send notification email to patient
     try {

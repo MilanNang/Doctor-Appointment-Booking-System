@@ -1,41 +1,68 @@
-import { useState } from "react";
-import { Search, CheckCircle, XCircle, Trash2, Eye } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { Search, CheckCircle, XCircle, Trash2, Eye, Loader2 } from "lucide-react";
+import API from "../util/api";
+import { showToast } from "../../Redux/toastSlice";
 
 export default function ManageAppointments() {
+  const dispatch = useDispatch();
   const [search, setSearch] = useState("");
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState({ id: null, type: null });
 
-  // Sample appointment data
-  const [appointments, setAppointments] = useState([
-    {
-      id: 1,
-      doctor: "Dr. Sarah Chen",
-      patient: "John Doe",
-      date: "2025-10-15",
-      time: "10:30 AM",
-      status: "Pending",
-    },
-    {
-      id: 2,
-      doctor: "Dr. Marcus Rodriguez",
-      patient: "Jane Smith",
-      date: "2025-10-16",
-      time: "2:00 PM",
-      status: "Approved",
-    },
-    {
-      id: 3,
-      doctor: "Dr. Emma Thompson",
-      patient: "David Johnson",
-      date: "2025-10-17",
-      time: "5:00 PM",
-      status: "Cancelled",
-    },
-  ]);
+  useEffect(() => {
+    fetchAppointments();
+  }, []);
 
-  const handleAction = (id, newStatus) => {
-    setAppointments((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
-    );
+  const fetchAppointments = async () => {
+    try {
+      setLoading(true);
+      const res = await API.get("/appointments/all");
+      const appointmentsList = Array.isArray(res.data) ? res.data : [];
+      setAppointments(
+        appointmentsList.map((a) => ({
+          id: a._id,
+          doctor: a.doctor?.user?.name || "N/A",
+          patient: a.patient?.name || "N/A",
+          date: a.date || "N/A",
+          time: a.time || "N/A",
+          status: a.status || "pending",
+        }))
+      );
+    } catch (error) {
+      console.error("Failed to fetch appointments:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (id, newStatus) => {
+    try {
+      setActionLoading({ id, type: newStatus });
+      await API.put(`/appointments/${id}`, { status: newStatus });
+      setAppointments((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
+      );
+      dispatch(showToast({ message: `Appointment ${newStatus}!`, type: "success" }));
+    } catch (error) {
+      console.error("Update failed:", error);
+      dispatch(showToast({ message: "Failed to update appointment status", type: "error" }));
+    } finally {
+      setActionLoading({ id: null, type: null });
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      setActionLoading({ id, type: "delete" });
+      // Note: You may need to add a delete endpoint in backend if it doesn't exist
+      setAppointments((prev) => prev.filter((a) => a.id !== id));
+    } catch (error) {
+      console.error("Delete failed:", error);
+    } finally {
+      setActionLoading({ id: null, type: null });
+    }
   };
 
   const filteredAppointments = appointments.filter(
@@ -45,6 +72,10 @@ export default function ManageAppointments() {
       a.date.includes(search) ||
       a.time.includes(search)
   );
+
+  if (loading) {
+    return <div className="text-center py-8">Loading appointments...</div>;
+  }
 
   return (
     <div>
@@ -108,31 +139,42 @@ export default function ManageAppointments() {
                     <button className="p-2 rounded hover:bg-slate-100">
                       <Eye className="w-4 h-4 text-blue-600" />
                     </button>
-                    {a.status !== "Approved" && (
+                    {a.status !== "approved" && (
                       <button
-                        onClick={() => handleAction(a.id, "Approved")}
-                        className="p-2 rounded hover:bg-slate-100"
+                        onClick={() => handleUpdateStatus(a.id, "approved")}
+                        disabled={actionLoading.id === a.id && actionLoading.type === "approved"}
+                        className="p-2 rounded hover:bg-slate-100 disabled:opacity-50"
                       >
-                        <CheckCircle className="w-4 h-4 text-green-600" />
+                        {actionLoading.id === a.id && actionLoading.type === "approved" ? (
+                          <Loader2 className="animate-spin w-4 h-4 text-green-600" />
+                        ) : (
+                          <CheckCircle className="w-4 h-4 text-green-600" />
+                        )}
                       </button>
                     )}
-                    {a.status !== "Cancelled" && (
+                    {a.status !== "cancelled" && (
                       <button
-                        onClick={() => handleAction(a.id, "Cancelled")}
-                        className="p-2 rounded hover:bg-slate-100"
+                        onClick={() => handleUpdateStatus(a.id, "cancelled")}
+                        disabled={actionLoading.id === a.id && actionLoading.type === "cancelled"}
+                        className="p-2 rounded hover:bg-slate-100 disabled:opacity-50"
                       >
-                        <XCircle className="w-4 h-4 text-red-600" />
+                        {actionLoading.id === a.id && actionLoading.type === "cancelled" ? (
+                          <Loader2 className="animate-spin w-4 h-4 text-red-600" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-red-600" />
+                        )}
                       </button>
                     )}
                     <button
-                      onClick={() =>
-                        setAppointments((prev) =>
-                          prev.filter((app) => app.id !== a.id)
-                        )
-                      }
-                      className="p-2 rounded hover:bg-slate-100"
+                      onClick={() => handleDelete(a.id)}
+                      disabled={actionLoading.id === a.id && actionLoading.type === "delete"}
+                      className="p-2 rounded hover:bg-slate-100 disabled:opacity-50"
                     >
-                      <Trash2 className="w-4 h-4 text-slate-600" />
+                      {actionLoading.id === a.id && actionLoading.type === "delete" ? (
+                        <Loader2 className="animate-spin w-4 h-4 text-slate-600" />
+                      ) : (
+                        <Trash2 className="w-4 h-4 text-slate-600" />
+                      )}
                     </button>
                   </td>
                 </tr>

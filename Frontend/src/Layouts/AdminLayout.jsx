@@ -1,6 +1,6 @@
 import { Outlet } from "react-router-dom";
 import AdminSidebar from "../pages/Admin/Sidebar";
-import AdminHeader from "../pages/Admin/Header";
+import UnifiedHeader from "../Componet/UnifiedHeader";
 
 export default function AdminLayout() {
   return (
@@ -11,7 +11,7 @@ export default function AdminLayout() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <AdminHeader />
+        <UnifiedHeader />
 
         {/* Page Content */}
         <main className="flex-1 p-6 overflow-y-auto">

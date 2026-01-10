@@ -2,9 +2,9 @@
 import React from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../pages/Doctor/Sidebar";
-import Header from "../pages/Doctor/Header";
+import UnifiedHeader from "../Componet/UnifiedHeader";
 
-export default function Layout() {
+export default function DoctorLayout() {
   return (
     <div className="flex h-screen">
       {/* Sidebar stays on the left */}
@@ -13,7 +13,7 @@ export default function Layout() {
       {/* Right side: Header + main content */}
       <div className="flex-1 flex flex-col">
         {/* Header at the top */}
-        <Header />
+        <UnifiedHeader />
 
         {/* Main content area */}
         <main className="flex-1 bg-gray-50 p-6 overflow-y-auto">

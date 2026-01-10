@@ -1,11 +1,20 @@
 import React, { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
 import { Calendar, Clock, Star, DollarSign } from "lucide-react";
 import API from "../util/api";
+import { showToast } from "../../Redux/toastSlice";
+import ConfirmDialog from "../../Componet/ConfirmDialog";
 
 export default function MyAppointments() {
+  const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState("All");
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    appointmentId: null,
+    action: null, // "cancel" or "reschedule"
+  });
 
   useEffect(() => {
     const load = async () => {
@@ -23,13 +32,13 @@ export default function MyAppointments() {
   }, []);
 
   const cancelAppointment = async (id) => {
-    if (!confirm("Are you sure you want to cancel this appointment?")) return;
     try {
       await API.put(`/appointments/${id}/cancel`);
       setAppointments((prev) => prev.map(a => a._id === id ? { ...a, status: 'cancelled' } : a));
+      dispatch(showToast({ message: "Appointment cancelled successfully", type: "success" }));
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || 'Failed to cancel');
+      dispatch(showToast({ message: err.response?.data?.message || 'Failed to cancel appointment', type: "error" }));
     }
   };
 
@@ -40,9 +49,10 @@ export default function MyAppointments() {
     try {
       await API.put(`/appointments/${id}/reschedule`, { date: newDate, time: newTime });
       setAppointments((prev) => prev.map(a => a._id === id ? { ...a, date: newDate, time: newTime, status: 'rescheduled' } : a));
+      dispatch(showToast({ message: "Appointment rescheduled successfully", type: "success" }));
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || 'Failed to reschedule');
+      dispatch(showToast({ message: err.response?.data?.message || 'Failed to reschedule', type: "error" }));
     }
   };
 
@@ -110,13 +120,36 @@ export default function MyAppointments() {
 
             {appt.status !== 'completed' && (
               <div className="flex gap-3 mt-4">
-                <button onClick={() => rescheduleAppointment(appt._id)} className="px-4 py-2 text-sm font-medium border border-yellow-400 text-yellow-600 rounded-lg hover:bg-yellow-50 transition">Reschedule</button>
-                <button onClick={() => cancelAppointment(appt._id)} className="px-4 py-2 text-sm font-medium border border-red-400 text-red-600 rounded-lg hover:bg-red-50 transition">Cancel</button>
+                <button onClick={() => setConfirmDialog({ isOpen: true, appointmentId: appt._id, action: 'reschedule' })} className="px-4 py-2 text-sm font-medium border border-yellow-400 text-yellow-600 rounded-lg hover:bg-yellow-50 transition">Reschedule</button>
+                <button onClick={() => setConfirmDialog({ isOpen: true, appointmentId: appt._id, action: 'cancel' })} className="px-4 py-2 text-sm font-medium border border-red-400 text-red-600 rounded-lg hover:bg-red-50 transition">Cancel</button>
               </div>
             )}
           </div>
         ))}
       </div>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.action === 'cancel' ? "Cancel Appointment" : "Reschedule Appointment"}
+        message={
+          confirmDialog.action === 'cancel'
+            ? "Are you sure you want to cancel this appointment? This action cannot be undone."
+            : "Are you sure you want to reschedule this appointment?"
+        }
+        confirmText={confirmDialog.action === 'cancel' ? "Cancel Appointment" : "Reschedule"}
+        cancelText="Keep it"
+        isDangerous={confirmDialog.action === 'cancel'}
+        onConfirm={() => {
+          if (confirmDialog.action === 'cancel') {
+            cancelAppointment(confirmDialog.appointmentId);
+          } else {
+            rescheduleAppointment(confirmDialog.appointmentId);
+          }
+          setConfirmDialog({ isOpen: false, appointmentId: null, action: null });
+        }}
+        onCancel={() => setConfirmDialog({ isOpen: false, appointmentId: null, action: null })}
+      />
     </div>
   );
 }

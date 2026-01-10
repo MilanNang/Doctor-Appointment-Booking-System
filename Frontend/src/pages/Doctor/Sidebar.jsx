@@ -1,5 +1,9 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import API from "../util/api";
+import { logout } from "../../Redux/authSlice";
 import {
   HomeIcon,
   UserIcon,
@@ -10,6 +14,21 @@ import {
 } from "@heroicons/react/24/outline";
 
 export default function Sidebar() {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await API.post("/auth/logout");
+      dispatch(logout());
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+      dispatch(logout());
+      navigate("/login");
+    }
+  };
+
   const menu = [
     { name: "Dashboard", icon: HomeIcon, path: "/doctor", exact: true }, // exact match
     { name: "Profile", icon: UserIcon, path: "/doctor/profile" },
@@ -56,7 +75,7 @@ export default function Sidebar() {
 
       {/* Bottom Sign Out */}
       <div className="space-y-3 border-t pt-4">
-        <button className="flex items-center space-x-3 text-red-600 hover:text-red-700 cursor-pointer">
+        <button onClick={handleLogout} className="flex items-center space-x-3 text-red-600 hover:text-red-700 cursor-pointer">
           <ArrowRightOnRectangleIcon className="w-5 h-5" />
           <span>Sign Out</span>
         </button>

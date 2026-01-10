@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Home, Search, Calendar, BookOpen, User, Settings, LogOut } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../../Redux/authSlice";
+import API from "../util/api";
 
 export default function PatientSidebar() {
   const location = useLocation();
@@ -111,7 +112,12 @@ export default function PatientSidebar() {
               <Settings size={16} /> Account Settings
             </Link>
             <button 
-              onClick={() => {
+              onClick={async () => {
+                try {
+                  await API.post("/auth/logout");
+                } catch (error) {
+                  console.error("Logout failed:", error);
+                }
                 dispatch(logout());
                 navigate("/login");
                 setOpen(false);

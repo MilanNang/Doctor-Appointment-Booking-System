@@ -119,7 +119,7 @@ export default function DoctorDashboard() {
           )}
 
           <button
-            onClick={() => navigate("/bookings")}
+            onClick={() => navigate("/doctor/bookings")}
             className="mt-4 w-full rounded-lg border border-yellow-300 py-2 text-yellow-700 font-medium"
           >
             View All Bookings

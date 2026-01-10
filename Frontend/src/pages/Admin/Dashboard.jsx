@@ -1,11 +1,57 @@
+import { useEffect, useState } from "react";
 import {
   CalendarDays,
   Stethoscope,
   Users,
   FileBarChart,
 } from "lucide-react";
+import API from "../util/api";
 
 export default function AdminDashboard() {
+  const [stats, setStats] = useState({
+    totalDoctors: 0,
+    totalPatients: 0,
+    appointmentsToday: 0,
+    monthlyRevenue: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const doctorsRes = await API.get("/admin/doctors");
+      const patientsRes = await API.get("/admin/patients");
+      const appointmentsRes = await API.get("/appointments/all");
+
+      const doctors = Array.isArray(doctorsRes.data) ? doctorsRes.data.length : 0;
+      const patients = Array.isArray(patientsRes.data) ? patientsRes.data.length : 0;
+      const appointments = Array.isArray(appointmentsRes.data) ? appointmentsRes.data : [];
+
+      const today = new Date().toISOString().split("T")[0];
+      const appointmentsToday = appointments.filter((a) => a.date === today).length;
+
+      const revenue = appointments.reduce((sum, a) => sum + (a.fees || 0), 0);
+
+      setStats({
+        totalDoctors: doctors,
+        totalPatients: patients,
+        appointmentsToday: appointmentsToday,
+        monthlyRevenue: revenue,
+      });
+    } catch (error) {
+      console.error("Failed to fetch stats:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="text-center py-8">Loading dashboard...</div>;
+  }
+
   return (
     <div className="space-y-6">
       {/* Page Title */}
@@ -16,22 +62,22 @@ export default function AdminDashboard() {
         <StatCard
           icon={<Stethoscope className="text-blue-600" size={28} />}
           title="Total Doctors"
-          value="120"
+          value={stats.totalDoctors}
         />
         <StatCard
           icon={<Users className="text-green-600" size={28} />}
           title="Total Patients"
-          value="2,340"
+          value={stats.totalPatients}
         />
         <StatCard
           icon={<CalendarDays className="text-purple-600" size={28} />}
           title="Appointments Today"
-          value="85"
+          value={stats.appointmentsToday}
         />
         <StatCard
           icon={<FileBarChart className="text-orange-600" size={28} />}
-          title="Monthly Revenue"
-          value="$12,450"
+          title="Total Revenue"
+          value={`₹${stats.monthlyRevenue.toLocaleString()}`}
         />
       </div>
 

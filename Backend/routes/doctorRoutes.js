@@ -26,6 +26,9 @@ router.post(
 // Get all approved doctors
 router.get("/", getAllDoctors);
 
+// Dashboard must come before /:id to prevent /:id from catching /dashboard
+router.get("/dashboard", protect, doctorOnly, getDoctorDashboard);
+
 router.get("/me", protect, doctorOnly, async (req, res) => {
   try {
     const doctor = await Doctor.findOne({ user: req.user._id });
@@ -37,10 +40,8 @@ router.get("/me", protect, doctorOnly, async (req, res) => {
   }
 });
 
-// must come after /me
+// must come after /me and /dashboard
 router.get("/:id", getDoctorById);
-// GET /doctors/dashboard
-router.get("/dashboard", protect, doctorOnly, getDoctorDashboard);
 
 
 

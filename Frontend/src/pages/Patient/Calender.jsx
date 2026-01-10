@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
+import { useDispatch } from "react-redux";
 import { ChevronLeft, Clock, Calendar, Globe } from "lucide-react";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
+import { showToast } from "../../Redux/toastSlice";
 
 /* ---------------------------------------------------
    TIME UTILITIES
@@ -67,6 +69,7 @@ function generateSlots(start, end, duration) {
 --------------------------------------------------- */
 
 export default function BookingPage() {
+  const dispatch = useDispatch();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -151,11 +154,11 @@ export default function BookingPage() {
         time: convert12To24(selectedTime), // FIXED HERE ⭐
       });
 
-      alert("Appointment booked successfully!");
+      dispatch(showToast({ message: "Appointment booked successfully!", type: "success" }));
       navigate("/patient/appointments");
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Failed to book appointment.");
+      dispatch(showToast({ message: err.response?.data?.message || "Failed to book appointment.", type: "error" }));
     }
   };
 

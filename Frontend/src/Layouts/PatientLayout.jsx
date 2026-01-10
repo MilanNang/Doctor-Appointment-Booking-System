@@ -1,8 +1,8 @@
 import { Outlet } from "react-router-dom";
 import Sidebar from "../pages/Patient/PatientSidebar";
-import Header from "../pages/Patient/Header";
+import UnifiedHeader from "../Componet/UnifiedHeader";
 
-const Layout = () => {
+const PatientLayout = () => {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
@@ -11,7 +11,7 @@ const Layout = () => {
       {/* Main content area */}
       <div className="flex flex-col flex-1">
         {/* Header */}
-        <Header />
+        <UnifiedHeader />
 
         {/* Dynamic content (Dashboard, Bookings, etc.) */}
         <main className="p-6 overflow-y-auto">
@@ -22,4 +22,4 @@ const Layout = () => {
   );
 };
 
-export default Layout;
+export default PatientLayout;

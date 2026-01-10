@@ -1,7 +1,8 @@
 // src/pages/Bookings.jsx
 import React, { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import API from "../util/api";
+import { showToast } from "../../Redux/toastSlice";
 import {
   Calendar,
   Clock,
@@ -15,6 +16,7 @@ import {
 
 export default function Bookings() {
   const { user } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -58,8 +60,9 @@ export default function Bookings() {
       await API.put(`/appointments/${id}`, { status: newStatus });
 
       await fetchDoctorBookings();
+      dispatch(showToast({ message: `Appointment ${newStatus}!`, type: "success" }));
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to update status");
+      dispatch(showToast({ message: err.response?.data?.message || "Failed to update status", type: "error" }));
     } finally {
       setActionLoading({ id: null, type: null });
     }
@@ -75,6 +78,7 @@ export default function Bookings() {
     const s = {
       pending: "bg-yellow-100 text-yellow-700 border-yellow-200",
       approved: "bg-green-100 text-green-700 border-green-200",
+      "in-progress": "bg-indigo-100 text-indigo-700 border-indigo-200",
       completed: "bg-blue-100 text-blue-700 border-blue-200",
       cancelled: "bg-red-100 text-red-700 border-red-200",
     };
@@ -182,6 +186,7 @@ export default function Bookings() {
                       </div>
                     </div>
 
+                    {/* Actions */}
                     {ap.status === "pending" && (
                       <div className="flex gap-3 mt-4 pt-4 border-t border-gray-200">
                         {/* APPROVE BUTTON */}
@@ -222,6 +227,82 @@ export default function Bookings() {
                             <XCircle className="w-4 h-4" />
                           )}
                           Decline
+                        </button>
+                      </div>
+                    )}
+
+                    {ap.status === "approved" && (
+                      <div className="flex gap-3 mt-4 pt-4 border-t border-gray-200">
+                        <button
+                          onClick={() => handleStatusChange(ap._id, "in-progress", "start")}
+                          disabled={
+                            actionLoading.id === ap._id &&
+                            actionLoading.type === "start"
+                          }
+                          className="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg hover:bg-indigo-700 flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          {actionLoading.id === ap._id &&
+                          actionLoading.type === "start" ? (
+                            <Loader2 className="animate-spin w-4 h-4" />
+                          ) : (
+                            <Clock className="w-4 h-4" />
+                          )}
+                          Start
+                        </button>
+
+                        <button
+                          onClick={() => handleStatusChange(ap._id, "cancelled", "cancel")}
+                          disabled={
+                            actionLoading.id === ap._id &&
+                            actionLoading.type === "cancel"
+                          }
+                          className="flex-1 bg-red-100 text-red-600 py-2.5 rounded-lg hover:bg-red-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          {actionLoading.id === ap._id &&
+                          actionLoading.type === "cancel" ? (
+                            <Loader2 className="animate-spin w-4 h-4" />
+                          ) : (
+                            <XCircle className="w-4 h-4" />
+                          )}
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+
+                    {ap.status === "in-progress" && (
+                      <div className="flex gap-3 mt-4 pt-4 border-t border-gray-200">
+                        <button
+                          onClick={() => handleStatusChange(ap._id, "completed", "complete")}
+                          disabled={
+                            actionLoading.id === ap._id &&
+                            actionLoading.type === "complete"
+                          }
+                          className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          {actionLoading.id === ap._id &&
+                          actionLoading.type === "complete" ? (
+                            <Loader2 className="animate-spin w-4 h-4" />
+                          ) : (
+                            <CheckCircle className="w-4 h-4" />
+                          )}
+                          Complete
+                        </button>
+
+                        <button
+                          onClick={() => handleStatusChange(ap._id, "cancelled", "cancel")}
+                          disabled={
+                            actionLoading.id === ap._id &&
+                            actionLoading.type === "cancel"
+                          }
+                          className="flex-1 bg-red-100 text-red-600 py-2.5 rounded-lg hover:bg-red-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                          {actionLoading.id === ap._id &&
+                          actionLoading.type === "cancel" ? (
+                            <Loader2 className="animate-spin w-4 h-4" />
+                          ) : (
+                            <XCircle className="w-4 h-4" />
+                          )}
+                          Cancel
                         </button>
                       </div>
                     )}

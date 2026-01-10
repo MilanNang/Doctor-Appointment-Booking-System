@@ -1,5 +1,11 @@
 // src/App.jsx
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { useDispatch } from "react-redux";
+import API from "./pages/util/api";
+import { loginSuccess } from "./Redux/authSlice";
+import ProtectedRoute from "./Components/ProtectedRoute";
+import ToastContainer from "./Componet/ToastContainer";
 
 import Home from "./pages/Home";
 import Login from './pages/Auth/Login';
@@ -32,14 +38,30 @@ import PatientCalendar from "./pages/Patient/Calender";
  import Payments from "./pages/Admin/Payments";
 
 function App() {
+  const dispatch = useDispatch();
+
+  // Check if user is authenticated on app load (from cookie)
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data } = await API.get("/auth/verify");
+        dispatch(loginSuccess(data));
+      } catch (error) {
+        console.log("Not authenticated:", error.message);
+      }
+    };
+    checkAuth();
+  }, [dispatch]);
+
   return (
     <BrowserRouter>
+      <ToastContainer />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         {/* Doctor side */}
-        <Route path="/doctor" element={<DoctorLayout />}>
+        <Route path="/doctor" element={<ProtectedRoute requiredRole="doctor"><DoctorLayout /></ProtectedRoute>}>
           <Route index element={<DoctorDashboard />} />
           <Route path="profile" element={<DoctorProfile />} />
           <Route path="calendar" element={<DoctorCalendar />} />
@@ -48,7 +70,7 @@ function App() {
         </Route>
 
         {/* Patient side */}
-        <Route path="/patient" element={<PatientLayout />}>
+        <Route path="/patient" element={<ProtectedRoute requiredRole="patient"><PatientLayout /></ProtectedRoute>}>
           <Route index element={<PatientDashboard />} />
           <Route path="browse-services" element={<BrowseServices />} />
           <Route path="appointments" element={<MyBookings />} />
@@ -56,7 +78,7 @@ function App() {
         </Route>
 
         {/* Admin side */}
-         <Route path="/admin" element={<AdminLayout />}>
+         <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminLayout /></ProtectedRoute>}>
           <Route index element={<AdminDashboard />} />
           <Route path="doctors" element={<ManageDoctors />} />
           <Route path="patients" element={<ManagePatients />} />

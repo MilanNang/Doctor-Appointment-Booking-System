@@ -1,40 +1,53 @@
-import { useState } from "react";
-import { Search, Eye, CheckCircle, XCircle, Trash2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { Search, Eye, CheckCircle, XCircle, Trash2, Loader2 } from "lucide-react";
+import API from "../util/api";
+import { showToast } from "../../Redux/toastSlice";
 
 export default function ManageDoctors() {
+  const dispatch = useDispatch();
   const [search, setSearch] = useState("");
+  const [doctors, setDoctors] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState({ id: null, type: null });
 
-  // Sample doctor data
-  const [doctors, setDoctors] = useState([
-    {
-      id: 1,
-      name: "Dr. Sarah Chen",
-      specialty: "Cardiologist",
-      email: "sarah.chen@email.com",
-      status: "Approved",
-    },
-    {
-      id: 2,
-      name: "Dr. Marcus Rodriguez",
-      specialty: "Dermatologist",
-      email: "marcus.rod@email.com",
-      status: "Pending",
-    },
-    {
-      id: 3,
-      name: "Dr. Emma Thompson",
-      specialty: "Pediatrician",
-      email: "emma.t@email.com",
-      status: "Blocked",
-    },
-  ]);
+  useEffect(() => {
+    fetchDoctors();
+  }, []);
 
-  const handleAction = (id, action) => {
-    setDoctors((prev) =>
-      prev.map((doc) =>
-        doc.id === id ? { ...doc, status: action } : doc
-      )
-    );
+  const fetchDoctors = async () => {
+    try {
+      setLoading(true);
+      const res = await API.get("/admin/doctors");
+      const doctorsList = Array.isArray(res.data) ? res.data : [];
+      setDoctors(
+        doctorsList.map((doc) => ({
+          id: doc._id,
+          name: doc.user?.name || "N/A",
+          specialty: doc.specialization || "N/A",
+          email: doc.user?.email || "N/A",
+          status: "Approved", // From database if available
+        }))
+      );
+    } catch (error) {
+      console.error("Failed to fetch doctors:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      setActionLoading({ id, type: "delete" });
+      await API.delete(`/admin/doctors/${id}`);
+      setDoctors((prev) => prev.filter((d) => d.id !== id));
+      dispatch(showToast({ message: "Doctor deleted successfully", type: "success" }));
+    } catch (error) {
+      console.error("Delete failed:", error);
+      dispatch(showToast({ message: "Failed to delete doctor", type: "error" }));
+    } finally {
+      setActionLoading({ id: null, type: null });
+    }
   };
 
   const filteredDoctors = doctors.filter(
@@ -43,6 +56,10 @@ export default function ManageDoctors() {
       doc.specialty.toLowerCase().includes(search.toLowerCase()) ||
       doc.email.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (loading) {
+    return <div className="text-center py-8">Loading doctors...</div>;
+  }
 
   return (
     <div>
@@ -105,26 +122,15 @@ export default function ManageDoctors() {
                       <Eye className="w-4 h-4 text-blue-600" />
                     </button>
                     <button
-                      onClick={() => handleAction(doc.id, "Approved")}
-                      className="p-2 rounded hover:bg-slate-100"
+                      onClick={() => handleDelete(doc.id)}
+                      disabled={actionLoading.id === doc.id && actionLoading.type === "delete"}
+                      className="p-2 rounded hover:bg-slate-100 disabled:opacity-50"
                     >
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                    </button>
-                    <button
-                      onClick={() => handleAction(doc.id, "Blocked")}
-                      className="p-2 rounded hover:bg-slate-100"
-                    >
-                      <XCircle className="w-4 h-4 text-red-600" />
-                    </button>
-                    <button
-                      onClick={() =>
-                        setDoctors((prev) =>
-                          prev.filter((d) => d.id !== doc.id)
-                        )
-                      }
-                      className="p-2 rounded hover:bg-slate-100"
-                    >
-                      <Trash2 className="w-4 h-4 text-slate-600" />
+                      {actionLoading.id === doc.id && actionLoading.type === "delete" ? (
+                        <Loader2 className="animate-spin w-4 h-4 text-slate-600" />
+                      ) : (
+                        <Trash2 className="w-4 h-4 text-slate-600" />
+                      )}
                     </button>
                   </td>
                 </tr>

@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { useDispatch } from "react-redux";
 import { Search } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { showToast } from "../../Redux/toastSlice";
 
 export default function BrowseDoctors() {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const [page, setPage] = useState(1);
