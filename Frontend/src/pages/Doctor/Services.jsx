@@ -99,214 +99,223 @@ export default function DoctorServices() {
   };
 
   return (
-    <div className="p-6 relative">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">My Services</h1>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-yellow-500 text-white px-4 py-2 rounded-lg shadow hover:bg-yellow-600"
-        >
-          + Add New Service
-        </button>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white p-6 md:p-8">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-8 md:items-center md:flex-row flex-col gap-4">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900">My Services</h1>
+            <p className="text-gray-600 mt-2">Manage your medical services and consultation offerings</p>
+          </div>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="btn-primary px-6 py-2.5"
+          >
+            + Add New Service
+          </button>
+        </div>
 
-      <p className="text-gray-500 mb-6">
-        Manage your medical services and consultation offerings
-      </p>
-
-      {/* Services List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {services.map((service) => (
-          <div key={service.id} className="bg-white p-5 rounded-xl shadow">
-            <div className="flex justify-between items-start">
-              <h2 className="text-lg font-semibold text-gray-800">
-                {service.name}
-              </h2>
-              <div className="flex space-x-2 text-gray-500">
-                <EyeIcon className="w-5 h-5 cursor-pointer hover:text-yellow-500" />
-                <PencilSquareIcon
-                  className="w-5 h-5 cursor-pointer hover:text-yellow-500"
-                  onClick={() => handleEdit(service)}
-                />
-                <TrashIcon
-                  className="w-5 h-5 cursor-pointer hover:text-red-500"
-                  onClick={() => handleDelete(service.id)}
-                />
+        {/* Services List */}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          {services.map((service) => (
+            <div key={service.id} className="card p-6 hover:shadow-lg transition">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex-1">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {service.name}
+                  </h2>
+                  <span
+                    className={`text-xs font-semibold mt-2 inline-block px-3 py-1 rounded-full ${
+                      service.status === "active"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    {service.status.charAt(0).toUpperCase() + service.status.slice(1)}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleEdit(service)}
+                    className="p-2 hover:bg-yellow-50 rounded-lg transition text-yellow-600 font-medium"
+                    title="Edit"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    onClick={() => handleDelete(service.id)}
+                    className="p-2 hover:bg-red-50 rounded-lg transition text-red-600 font-medium"
+                    title="Delete"
+                  >
+                    🗑️
+                  </button>
+                </div>
               </div>
-            </div>
-            <span
-              className={`text-sm px-2 py-1 rounded ${
-                service.status === "active"
-                  ? "bg-green-100 text-green-600"
-                  : "bg-gray-100 text-gray-600"
-              }`}
-            >
-              {service.status}
-            </span>
-            <p className="text-gray-600 mt-3">{service.desc}</p>
-            <div className="flex items-center space-x-6 mt-4">
-              <p className="text-yellow-600 font-semibold">${service.price}</p>
-              <p className="text-gray-500">{service.duration} min</p>
-              <p className="text-gray-500">{service.appointments} appointments</p>
-            </div>
-            <div className="flex mt-4 space-x-3">
+              <p className="text-gray-600 mb-4">{service.desc}</p>
+              <div className="border-t border-gray-200 pt-4 mb-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Price:</span>
+                  <span className="font-bold text-yellow-600 text-lg">₹{service.price}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Duration:</span>
+                  <span className="font-medium">{service.duration} min</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Appointments:</span>
+                  <span className="font-medium">{service.appointments}</span>
+                </div>
+              </div>
               <button
                 onClick={() => toggleStatus(service.id)}
-                className={`px-3 py-1 rounded border ${
+                className={`w-full py-2 rounded-lg transition font-medium ${
                   service.status === "active"
-                    ? "border-yellow-500 text-yellow-500 hover:bg-yellow-50"
-                    : "border-green-500 text-green-500 hover:bg-green-50"
+                    ? "border border-yellow-400 text-yellow-600 hover:bg-yellow-50"
+                    : "border border-green-400 text-green-600 hover:bg-green-50"
                 }`}
               >
-                {service.status === "active" ? "Pause" : "Activate"}
-              </button>
-              <button
-                onClick={() => handleEdit(service)}
-                className="bg-yellow-500 text-white px-4 py-1 rounded hover:bg-yellow-600"
-              >
-                Edit Service
+                {service.status === "active" ? "⏸ Pause" : "▶ Activate"}
               </button>
             </div>
+          ))}
+        </div>
+
+        {/* Stats Section */}
+        <div className="grid md:grid-cols-4 gap-6 mb-8">
+          <div className="card p-6 text-center">
+            <p className="text-3xl font-bold text-yellow-600 mb-2">
+              {services.filter((s) => s.status === "active").length}
+            </p>
+            <p className="text-gray-600 font-medium">Active Services</p>
           </div>
-        ))}
-      </div>
-
-      {/* Stats Section */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow text-center">
-          <p className="text-2xl font-bold text-yellow-600">
-            {services.filter((s) => s.status === "active").length}
-          </p>
-          <p className="text-gray-500">Active Services</p>
+          <div className="card p-6 text-center">
+            <p className="text-3xl font-bold text-purple-600 mb-2">
+              {services.reduce((acc, s) => acc + s.appointments, 0)}
+            </p>
+            <p className="text-gray-600 font-medium">Total Appointments</p>
+          </div>
+          <div className="card p-6 text-center">
+            <p className="text-3xl font-bold text-gray-900 mb-2">
+              ₹{Math.round(services.reduce((acc, s) => acc + s.price, 0) / services.length)}
+            </p>
+            <p className="text-gray-600 font-medium">Avg Consultation Fee</p>
+          </div>
+          <div className="card p-6 text-center">
+            <p className="text-3xl font-bold text-green-600 mb-2">4.9</p>
+            <p className="text-gray-600 font-medium">Avg Rating</p>
+          </div>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow text-center">
-          <p className="text-2xl font-bold text-purple-600">
-            {services.reduce((acc, s) => acc + s.appointments, 0)}
-          </p>
-          <p className="text-gray-500">Total Appointments</p>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow text-center">
-          <p className="text-2xl font-bold text-gray-800">
-            $
-            {(
-              services.reduce((acc, s) => acc + s.price, 0) / services.length
-            ).toFixed(0)}
-          </p>
-          <p className="text-gray-500">Avg Consultation Fee</p>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow text-center">
-          <p className="text-2xl font-bold text-green-600">4.9</p>
-          <p className="text-gray-500">Avg Rating</p>
-        </div>
-      </div>
 
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center z-50">
-          {/* Background blur */}
-          <div className="absolute inset-0 backdrop-blur-sm"></div>
+        {/* Modal */}
+        {isModalOpen && (
+          <div className="fixed inset-0 flex items-center justify-center z-50">
+            {/* Background blur */}
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
 
-          {/* Modal box */}
-          <div className="relative bg-white rounded-lg w-full max-w-lg p-6 shadow-lg border border-yellow-300 z-10">
-            {/* Header */}
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-gray-800">
-                {editingService ? "Edit Service" : "Create New Service"}
-              </h2>
-              <XMarkIcon
-                className="w-6 h-6 text-gray-500 cursor-pointer hover:text-gray-700"
-                onClick={() => setIsModalOpen(false)}
-              />
-            </div>
-
-            {/* Form */}
-            <div className="space-y-4">
-              <div>
-                <label className="block text-gray-700 text-sm font-medium mb-1">
-                  Service Title
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="e.g., General Consultation"
-                  className="w-full border border-yellow-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                />
+            {/* Modal box */}
+            <div className="relative bg-white rounded-lg w-full max-w-lg p-8 shadow-2xl z-10">
+              {/* Header */}
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {editingService ? "Edit Service" : "Create New Service"}
+                </h2>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ✕
+                </button>
               </div>
-              <div>
-                <label className="block text-gray-700 text-sm font-medium mb-1">
-                  Description
-                </label>
-                <textarea
-                  name="desc"
-                  value={formData.desc}
-                  onChange={handleChange}
-                  placeholder="Describe this service..."
-                  className="w-full border border-yellow-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+
+              {/* Form */}
+              <div className="space-y-4">
                 <div>
-                  <label className="block text-gray-700 text-sm font-medium mb-1">
-                    Price ($)
+                  <label className="block text-gray-900 text-sm font-semibold mb-2">
+                    Service Title
                   </label>
                   <input
-                    type="number"
-                    name="price"
-                    value={formData.price}
+                    type="text"
+                    name="name"
+                    value={formData.name}
                     onChange={handleChange}
-                    className="w-full border border-yellow-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    placeholder="e.g., General Consultation"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 text-sm font-medium mb-1">
-                    Duration (min)
+                  <label className="block text-gray-900 text-sm font-semibold mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    name="desc"
+                    value={formData.desc}
+                    onChange={handleChange}
+                    placeholder="Describe this service..."
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    rows="4"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-gray-900 text-sm font-semibold mb-2">
+                      Price (₹)
+                    </label>
+                    <input
+                      type="number"
+                      name="price"
+                      value={formData.price}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-900 text-sm font-semibold mb-2">
+                      Duration (min)
+                    </label>
+                    <input
+                      type="number"
+                      name="duration"
+                      value={formData.duration}
+                      onChange={handleChange}
+                      placeholder="30"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-gray-900 text-sm font-semibold mb-2">
+                    Category
                   </label>
                   <input
-                    type="number"
-                    name="duration"
-                    value={formData.duration}
+                    type="text"
+                    name="category"
+                    value={formData.category}
                     onChange={handleChange}
-                    placeholder="30"
-                    className="w-full border border-yellow-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    placeholder="e.g., Pediatrics"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-gray-700 text-sm font-medium mb-1">
-                  Category
-                </label>
-                <input
-                  type="text"
-                  name="category"
-                  value={formData.category}
-                  onChange={handleChange}
-                  placeholder="e.g., Pediatrics"
-                  className="w-full border border-yellow-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                />
+
+              {/* Footer */}
+              <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200">
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="btn-primary px-6 py-2.5"
+                >
+                  {editingService ? "Save Changes" : "Create Service"}
+                </button>
               </div>
             </div>
-
-            {/* Footer */}
-            <div className="flex justify-end space-x-3 mt-6">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                className="px-4 py-2 rounded bg-yellow-500 text-white hover:bg-yellow-600"
-              >
-                {editingService ? "Save Changes" : "Create Service"}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

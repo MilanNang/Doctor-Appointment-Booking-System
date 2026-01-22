@@ -142,3 +142,40 @@ export const verifyAuth = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// =======================
+// @desc   Update logged-in user's profile
+// @route  PUT /api/auth/profile
+// @access Private
+// =======================
+export const updateProfile = async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: "Not authenticated" });
+
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const { name, email, password } = req.body;
+
+    if (email && email !== user.email) {
+      const exists = await User.findOne({ email });
+      if (exists) return res.status(400).json({ message: "Email already in use" });
+      user.email = email;
+    }
+
+    if (name) user.name = name;
+    if (password) user.password = password; // will be hashed by pre-save hook
+
+    const updated = await user.save();
+
+    res.json({
+      _id: updated._id,
+      name: updated.name,
+      email: updated.email,
+      role: updated.role,
+      token: generateToken(updated._id, updated.role),
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

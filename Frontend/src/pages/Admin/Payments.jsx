@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, DollarSign, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
+import { Search, IndianRupee, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 
 export default function Payments() {
   const [search, setSearch] = useState("");
@@ -43,57 +43,61 @@ export default function Payments() {
   );
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-slate-800 mb-6">Payments</h1>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white p-6 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-900">Payments</h1>
+          <p className="text-gray-600 mt-2">Manage and track all financial transactions</p>
+        </div>
 
-      {/* Search */}
-      <div className="flex items-center border rounded-lg px-3 py-2 w-full md:w-1/3 mb-6">
-        <Search className="w-5 h-5 text-slate-500 mr-2" />
-        <input
-          type="text"
-          placeholder="Search payments..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full outline-none"
-        />
-      </div>
+        {/* Search */}
+        <div className="card p-4 mb-6">
+          <div className="flex items-center border border-gray-300 rounded-lg px-4 py-2.5 bg-white">
+            <Search className="w-5 h-5 text-gray-400 mr-3" />
+            <input
+              type="text"
+              placeholder="Search by doctor, patient, or date..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full outline-none bg-transparent"
+            />
+          </div>
+        </div>
 
-      {/* Table */}
-      <div className="bg-white shadow rounded-lg overflow-x-auto">
-        <table className="w-full border-collapse">
+        {/* Table */}
+        <div className="card overflow-hidden">
+        <table className="w-full">
           <thead>
-            <tr className="bg-slate-100 text-slate-700 text-sm">
-              <th className="p-3 text-left">Doctor</th>
-              <th className="p-3 text-left">Patient</th>
-              <th className="p-3 text-left">Date</th>
-              <th className="p-3 text-left">Amount</th>
-              <th className="p-3 text-left">Type</th>
-              <th className="p-3 text-left">Status</th>
+            <tr className="bg-gray-100 text-gray-700 text-left text-sm font-semibold border-b border-gray-200">
+              <th className="px-6 py-4">Doctor</th>
+              <th className="px-6 py-4">Patient</th>
+              <th className="px-6 py-4">Date</th>
+              <th className="px-6 py-4">Amount</th>
+              <th className="px-6 py-4">Type</th>
+              <th className="px-6 py-4">Status</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length > 0 ? (
               filtered.map((t) => (
-                <tr key={t.id} className="border-t hover:bg-slate-50">
-                  <td className="p-3">{t.doctor}</td>
-                  <td className="p-3">{t.patient}</td>
-                  <td className="p-3">{t.date}</td>
-                  <td className="p-3 font-medium flex items-center gap-1">
-                    <DollarSign className="w-4 h-4 text-green-600" />
-                    {t.amount}
+                <tr key={t.id} className="border-b border-gray-200 hover:bg-yellow-50 transition">
+                  <td className="px-6 py-4 font-semibold text-gray-900">{t.doctor}</td>
+                  <td className="px-6 py-4 text-gray-700">{t.patient}</td>
+                  <td className="px-6 py-4 text-gray-600">{t.date}</td>
+                  <td className="px-6 py-4 font-bold text-yellow-600 flex items-center gap-1">
+                    <IndianRupee className="w-4 h-4" />₹{t.amount}
                   </td>
-                  <td className="p-3 flex items-center gap-2">
+                  <td className="px-6 py-4 flex items-center gap-2">
                     {t.type === "Credit" ? (
                       <ArrowDownCircle className="w-4 h-4 text-green-600" />
                     ) : (
                       <ArrowUpCircle className="w-4 h-4 text-red-600" />
                     )}
-                    {t.type}
+                    <span className="font-medium">{t.type}</span>
                   </td>
-                  <td className="p-3">
+                  <td className="px-6 py-4">
                     <span
-                      className={`px-2 py-1 rounded text-xs font-medium
-                        ${
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
                           t.status === "Completed"
                             ? "bg-green-100 text-green-700"
                             : t.status === "Pending"
@@ -108,16 +112,14 @@ export default function Payments() {
               ))
             ) : (
               <tr>
-                <td
-                  colSpan={6}
-                  className="p-4 text-center text-slate-500 text-sm"
-                >
+                <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                   No transactions found
                 </td>
               </tr>
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

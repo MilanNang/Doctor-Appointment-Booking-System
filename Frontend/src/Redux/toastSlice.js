@@ -15,15 +15,6 @@ const toastSlice = createSlice({
         type, // "success", "error", "info", "warning"
         duration,
       });
-
-      // Auto remove after duration
-      if (duration > 0) {
-        setTimeout(() => {
-          state.notifications = state.notifications.filter(
-            (notif) => notif.id !== id
-          );
-        }, duration);
-      }
     },
     removeToast: (state, action) => {
       state.notifications = state.notifications.filter(

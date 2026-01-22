@@ -167,69 +167,84 @@ export default function BookingPage() {
   ----------------------------------------- */
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-white">
       {/* LEFT SIDEBAR */}
-      <div className="w-1/3 p-8 border-r bg-slate-50">
+      <div className="hidden lg:block w-80 p-8 border-r border-gray-200 bg-white">
         {step > 1 && (
           <button
             onClick={() => setStep(step - 1)}
-            className="mb-4 w-8 h-8 flex items-center justify-center rounded-full border"
+            className="mb-6 w-10 h-10 flex items-center justify-center rounded-lg border border-gray-300 hover:bg-gray-50 transition"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-5 h-5 text-gray-600" />
           </button>
         )}
 
-        <h2 className="text-xl font-semibold">{doctor.user?.name}</h2>
-        <h3 className="text-2xl font-bold mt-1">{doctor.specialization}</h3>
+        <h2 className="text-2xl font-bold text-gray-900">{doctor.user?.name}</h2>
+        <h3 className="text-lg font-semibold text-yellow-600 mt-2">{doctor.specialization}</h3>
 
-        <div className="mt-3 flex items-center gap-2 text-slate-600">
-          <Clock className="w-4 h-4" /> <span>30 min</span>
+        <div className="mt-6 space-y-3 text-gray-600">
+          <div className="flex items-center gap-3">
+            <Clock className="w-5 h-5 text-yellow-500" />
+            <span className="font-medium">30 min consultation</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Globe className="w-5 h-5 text-yellow-500" />
+            <span className="font-medium">India Standard Time</span>
+          </div>
         </div>
 
         {step >= 2 && selectedDate && (
-          <>
-            <div className="flex items-center mt-3 gap-2 text-slate-600">
-              <Calendar className="w-4 h-4" />
-              {selectedTime}, {new Date(selectedDate).toDateString()}
+          <div className="mt-8 card p-6 space-y-3">
+            <div className="flex items-center gap-3 text-gray-700">
+              <Calendar className="w-5 h-5 text-yellow-500" />
+              <div>
+                <p className="text-sm text-gray-600">Date</p>
+                <p className="font-semibold">{new Date(selectedDate).toDateString()}</p>
+              </div>
             </div>
-            <div className="flex items-center mt-2 gap-2 text-slate-600">
-              <Globe className="w-4 h-4" /> India Standard Time
+            <div className="flex items-center gap-3 text-gray-700">
+              <Clock className="w-5 h-5 text-yellow-500" />
+              <div>
+                <p className="text-sm text-gray-600">Time</p>
+                <p className="font-semibold">{selectedTime}</p>
+              </div>
             </div>
-          </>
+          </div>
         )}
       </div>
 
       {/* RIGHT CONTENT */}
-      <div className="flex-1 p-8">
+      <div className="flex-1 p-6 md:p-8">
 
         {/* STEP 1 */}
         {step === 1 && (
-          <>
-            <h2 className="text-lg font-semibold mb-4">Select a Date & Time</h2>
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Select Date & Time</h2>
+            <p className="text-gray-600 mb-8">Choose your preferred appointment slot</p>
 
-            <div className="flex gap-8">
+            <div className="grid lg:grid-cols-3 gap-8">
 
               {/* CALENDAR */}
-              <div className="w-2/3">
-                <div className="flex justify-between mb-4">
+              <div className="lg:col-span-2 card p-8">
+                <div className="flex justify-between items-center mb-8">
                   <button
                     onClick={() => setCurrentMonth(new Date(year, monthIndex - 1, 1))}
-                    className="px-2 py-1 border rounded"
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium"
                   >
-                    Prev
+                    ← Prev
                   </button>
-                  <h3 className="font-semibold">{monthName} {year}</h3>
+                  <h3 className="text-xl font-bold text-gray-900">{monthName} {year}</h3>
                   <button
                     onClick={() => setCurrentMonth(new Date(year, monthIndex + 1, 1))}
-                    className="px-2 py-1 border rounded"
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium"
                   >
-                    Next
+                    Next →
                   </button>
                 </div>
 
-                <div className="grid grid-cols-7 gap-2">
+                <div className="grid grid-cols-7 gap-3">
                   {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-                    <div key={d} className="text-center text-xs font-medium">{d}</div>
+                    <div key={d} className="text-center font-semibold text-gray-600 py-2">{d}</div>
                   ))}
 
                   {dayCells.map((day, idx) => {
@@ -244,11 +259,13 @@ export default function BookingPage() {
                       <button
                         key={idx}
                         onClick={() => available && setSelectedDate(dateStr)}
-                        className={`w-10 h-10 rounded-full flex items-center justify-center 
-                          ${selected ? "bg-blue-600 text-white" 
-                          : available ? "bg-blue-50 text-blue-700 hover:bg-blue-100"
-                          : "text-slate-300 cursor-not-allowed"}
-                          ${isToday ? "border border-blue-500" : ""}`}
+                        className={`w-12 h-12 rounded-lg flex items-center justify-center font-medium transition ${
+                          selected 
+                            ? "bg-yellow-500 text-white shadow-md" 
+                            : available 
+                            ? "bg-yellow-50 text-gray-900 hover:bg-yellow-100 border border-yellow-200"
+                            : "text-gray-300 cursor-not-allowed bg-gray-50"
+                        } ${isToday ? "ring-2 ring-yellow-400" : ""}`}
                       >
                         {day}
                       </button>
@@ -258,31 +275,31 @@ export default function BookingPage() {
               </div>
 
               {/* TIME SLOTS */}
-              <div className="w-1/3">
-                <h4 className="font-medium mb-3">
-                  {selectedDate ? new Date(selectedDate).toDateString() : "Pick a date"}
+              <div className="card p-6">
+                <h4 className="font-bold text-gray-900 mb-4">
+                  {selectedDate ? new Date(selectedDate).toDateString() : "Pick a date first"}
                 </h4>
 
-                <div className="flex flex-col gap-2 max-h-80 overflow-y-auto">
+                <div className="flex flex-col gap-2 max-h-96 overflow-y-auto">
                   {selectedDate && availabilityMap[selectedDate] ? (
                     availabilityMap[selectedDate].map((time) => (
-                      <div key={time} className="flex gap-2">
+                      <div key={time}>
                         {selectedTime === time ? (
-                          <>
-                            <button className="flex-1 px-4 py-2 rounded-lg bg-slate-700 text-white">
+                          <div className="flex gap-2">
+                            <button className="flex-1 px-4 py-2 rounded-lg bg-yellow-500 text-white font-medium">
                               {time}
                             </button>
                             <button
                               onClick={() => setStep(2)}
-                              className="px-4 py-2 bg-blue-600 text-white rounded-lg w-28"
+                              className="btn-primary px-4 py-2"
                             >
                               Next
                             </button>
-                          </>
+                          </div>
                         ) : (
                           <button
                             onClick={() => setSelectedTime(time)}
-                            className="w-full px-4 py-2 border rounded-lg hover:bg-slate-50"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg hover:bg-yellow-50 transition font-medium"
                           >
                             {time}
                           </button>
@@ -290,40 +307,52 @@ export default function BookingPage() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-slate-500 text-sm">No slots available.</p>
+                    <p className="text-gray-500 text-sm text-center py-8">No slots available</p>
                   )}
                 </div>
               </div>
             </div>
-          </>
+          </div>
         )}
 
         {/* STEP 2 */}
         {step === 2 && (
-          <div className="max-w-lg mx-auto bg-white p-6 rounded-xl shadow">
-            <h2 className="text-xl font-semibold mb-4">Confirm Your Appointment</h2>
+          <div className="max-w-2xl mx-auto">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Confirm Appointment</h2>
+            <p className="text-gray-600 mb-8">Review your appointment details before confirming</p>
 
-            <div className="space-y-3">
-
-              <div className="p-4 bg-slate-100 rounded-lg">
-                <p><b>Doctor:</b> {doctor.user?.name}</p>
-                <p><b>Specialization:</b> {doctor.specialization}</p>
-                <p><b>Fees:</b> ₹{doctor.fees}</p>
+            <div className="card p-8 space-y-6">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 space-y-3">
+                <h3 className="font-bold text-gray-900 text-lg">Doctor Information</h3>
+                <div className="space-y-2 text-gray-700">
+                  <p><span className="font-medium text-gray-900">Name:</span> {doctor.user?.name}</p>
+                  <p><span className="font-medium text-gray-900">Specialization:</span> {doctor.specialization}</p>
+                  <p><span className="font-medium text-gray-900">Consultation Fee:</span> <span className="text-yellow-600 font-bold">₹{doctor.fees}</span></p>
+                </div>
               </div>
 
-              <div className="p-4 bg-slate-100 rounded-lg">
-                <p><b>Date:</b> {new Date(selectedDate).toDateString()}</p>
-                <p><b>Time:</b> {selectedTime}</p>
-                <p><b>Duration:</b> 30 minutes</p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 space-y-3">
+                <h3 className="font-bold text-gray-900 text-lg">Appointment Details</h3>
+                <div className="space-y-2 text-gray-700">
+                  <p><span className="font-medium text-gray-900">Date:</span> {new Date(selectedDate).toDateString()}</p>
+                  <p><span className="font-medium text-gray-900">Time:</span> {selectedTime}</p>
+                  <p><span className="font-medium text-gray-900">Duration:</span> 30 minutes</p>
+                </div>
               </div>
 
               <button
                 onClick={handleConfirm}
-                className="w-full py-3 bg-blue-600 text-white rounded-lg text-lg font-medium hover:bg-blue-700"
+                className="w-full btn-primary py-3 text-lg font-semibold"
               >
                 Confirm Booking
               </button>
 
+              <button
+                onClick={() => setStep(1)}
+                className="w-full px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium text-gray-700"
+              >
+                Back to Calendar
+              </button>
             </div>
           </div>
         )}

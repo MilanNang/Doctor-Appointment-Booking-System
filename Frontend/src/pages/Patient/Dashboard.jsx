@@ -41,179 +41,125 @@ export default function PatientDashboard() {
   return (
     <div className="space-y-6">
 
-      {/* Welcome */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800">
-          Welcome back, {user?.name || "Patient"}!
-        </h1>
-        <p className="text-gray-500">
-          Here’s your health overview and upcoming appointments.
-        </p>
-      </div>
+      {/* Hero */}
+      <div className="card p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Hi, {user?.name || 'Patient'} 👋</h1>
+          <p className="muted mt-1">Welcome back — here's what's happening with your health.</p>
 
-      {/* Stats Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="p-4 bg-white rounded-xl shadow">
-          <h3 className="text-gray-500 text-sm">Active Appointments</h3>
-          <p className="text-2xl font-bold text-gray-800">
-            {stats?.activeAppointments ?? "…"}
-          </p>
-        </div>
-
-        <div className="p-4 bg-white rounded-xl shadow">
-          <h3 className="text-gray-500 text-sm">Total Spent</h3>
-          <p className="text-2xl font-bold text-gray-800">
-            ₹{stats?.totalSpent ?? "…"}
-          </p>
-        </div>
-
-        <div className="p-4 bg-white rounded-xl shadow">
-          <h3 className="text-gray-500 text-sm">Saved Doctors</h3>
-          <p className="text-2xl font-bold text-gray-800">
-            {stats?.savedDoctors ?? "…"}
-          </p>
-        </div>
-
-        <div className="p-4 bg-white rounded-xl shadow">
-          <h3 className="text-gray-500 text-sm">Avg Doctor Rating</h3>
-          <p className="text-2xl font-bold text-gray-800">
-            {stats?.avgRating ?? "…"}
-          </p>
-        </div>
-      </div>
-
-      {/* Upcoming Appointments + Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        {/* Upcoming Appointments */}
-        <div className="p-6 bg-white rounded-xl shadow">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">
-              Upcoming Appointments
-            </h2>
-
-            <button
-              onClick={() => navigate("/patient/appointments")}
-              className="text-sm text-yellow-600 hover:underline"
-            >
-              View All
-            </button>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button onClick={() => navigate('/patient/browse-services')} className="btn-primary">Book a Doctor</button>
+            <button onClick={() => navigate('/patient/appointments')} className="px-4 py-2 rounded-md border text-sm">My Appointments</button>
+            <button onClick={() => navigate('/patient/profile')} className="px-4 py-2 rounded-md border text-sm">Edit Profile</button>
           </div>
-
-          {upcoming.length === 0 ? (
-            <p className="text-gray-500 text-sm">No upcoming appointments.</p>
-          ) : (
-            upcoming.map((app, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between bg-yellow-50 p-4 rounded-lg mb-3 cursor-pointer"
-                onClick={() => navigate(`/patient/appointment/${app._id}`)}
-              >
-                <div>
-                  <h3 className="font-semibold text-gray-800">
-                    {app.doctorName}
-                  </h3>
-                  <p className="text-sm text-gray-500">{app.specialty}</p>
-                  <p className="text-xs text-gray-400">
-                    {app.date} - {app.time}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-600">
-                    {app.status}
-                  </span>
-                  <p className="font-bold text-yellow-600 mt-1">₹{app.fee}</p>
-                </div>
-              </div>
-            ))
-          )}
         </div>
 
-        {/* Quick Actions */}
-        <div className="p-6 bg-white rounded-xl shadow">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            Quick Actions
-          </h2>
-
-          <div className="space-y-3">
-
-            <button
-              onClick={() => navigate("/patient/browse-services")}
-              className="w-full px-4 py-2 bg-yellow-500 text-white rounded-lg"
-            >
-              Book a Doctor
-            </button>
-
-            <button
-              onClick={() => navigate("/patient/calendar")}
-              className="w-full px-4 py-2 bg-purple-100 text-purple-600 rounded-lg"
-            >
-              View Calendar
-            </button>
-
-            <button
-              onClick={() => navigate("/patient/messages")}
-              className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg"
-            >
-              Check Messages
-            </button>
+        <div className="hidden md:block">
+          <div className="bg-white p-4 rounded-lg shadow text-right">
+            <div className="text-xs muted">Next appointment</div>
+            {upcoming[0] ? (
+              <div className="text-sm font-semibold text-gray-800">{upcoming[0].doctorName}</div>
+            ) : (
+              <div className="text-sm muted">No upcoming appointments</div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Saved Doctors */}
-      <div className="p-6 bg-white rounded-xl shadow">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-gray-800">Saved Doctors</h2>
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="card p-4">
+          <div className="text-xs muted">Active Appointments</div>
+          <div className="text-2xl font-bold mt-2">{stats?.activeAppointments ?? '—'}</div>
+        </div>
+        <div className="card p-4">
+          <div className="text-xs muted">Total Spent</div>
+          <div className="text-2xl font-bold mt-2">₹{stats?.totalSpent ?? '—'}</div>
+        </div>
+        <div className="card p-4">
+          <div className="text-xs muted">Saved Doctors</div>
+          <div className="text-2xl font-bold mt-2">{stats?.savedDoctors ?? '—'}</div>
+        </div>
+        <div className="card p-4">
+          <div className="text-xs muted">Avg Doctor Rating</div>
+          <div className="text-2xl font-bold mt-2">{stats?.avgRating ?? '—'}</div>
+        </div>
+      </div>
 
-          <button
-            onClick={() => navigate("/patient/doctors")}
-            className="text-sm text-yellow-600 hover:underline"
-          >
-            Browse More
-          </button>
+      {/* Main Columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Left: Upcoming */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="card p-4">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-semibold">Upcoming Appointments</h3>
+              <button onClick={() => navigate('/patient/appointments')} className="text-sm text-yellow-600">View all</button>
+            </div>
+
+            {upcoming.length === 0 ? (
+              <div className="muted text-sm">No upcoming appointments</div>
+            ) : (
+              upcoming.map((app, i) => (
+                <div key={i} className="p-3 rounded-lg border mb-3 flex items-center justify-between hover:shadow-sm cursor-pointer" onClick={() => navigate(`/patient/appointments`)}>
+                  <div>
+                    <div className="font-semibold">{app.doctorName}</div>
+                    <div className="text-sm muted">{app.specialty} · {app.date} {app.time}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-semibold text-yellow-600">₹{app.fee}</div>
+                    <div className="text-xs muted">{app.status}</div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="card p-4">
+            <h3 className="font-semibold mb-3">Recent Activity</h3>
+            {activity.length === 0 ? (
+              <div className="muted text-sm">No recent activity</div>
+            ) : (
+              <ul className="space-y-2 text-sm muted">
+                {activity.map((a, i) => (
+                  <li key={i}>{a.doctor} {a.action} · <span className="text-gray-400">{a.timeAgo}</span></li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {savedDoctors.length === 0 ? (
-            <p className="text-gray-500 text-sm">No saved doctors.</p>
-          ) : (
-            savedDoctors.map((doc, i) => (
-              <div key={i} className="p-4 border rounded-lg shadow-sm">
+        {/* Right: Saved Doctors */}
+        <div className="space-y-4">
+          <div className="card p-4">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-semibold">Saved Doctors</h3>
+              <button onClick={() => navigate('/patient/browse-services')} className="text-sm text-yellow-600">Browse</button>
+            </div>
 
-                <div className="font-semibold text-gray-800">{doc.name}</div>
-                <div className="text-sm text-gray-500">{doc.specialty}</div>
-                <div className="mt-2 text-yellow-600 font-bold">₹{doc.fee}</div>
-
-                <button
-                  onClick={() => navigate(`/doctor/${doc._id}`)}
-                  className="mt-3 w-full py-1 text-sm bg-yellow-500 text-white rounded hover:bg-yellow-600"
-                >
-                  View Profile
-                </button>
-
+            {savedDoctors.length === 0 ? (
+              <div className="muted text-sm">No saved doctors</div>
+            ) : (
+              <div className="space-y-3">
+                {savedDoctors.map((doc, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold">{doc.name}</div>
+                      <div className="text-sm muted">{doc.specialty}</div>
+                    </div>
+                    <button onClick={() => navigate(`/doctor/${doc._id}`)} className="text-sm text-yellow-600">View</button>
+                  </div>
+                ))}
               </div>
-            ))
-          )}
+            )}
+          </div>
+
+          <div className="card p-4">
+            <h3 className="font-semibold mb-2">Health Tips</h3>
+            <p className="muted text-sm">Small tips to keep you healthy. Stay hydrated, move regularly, and sleep well.</p>
+          </div>
         </div>
       </div>
 
-      {/* Recent Activity */}
-      <div className="p-6 bg-white rounded-xl shadow">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">
-          Recent Activity
-        </h2>
-
-        <ul className="space-y-3 text-sm text-gray-600">
-          {activity.map((a, i) => (
-            <li key={i}>
-              <span className="font-semibold text-gray-800">{a.doctor}</span>{" "}
-              {a.action}{" "}
-              <span className="text-gray-400">· {a.timeAgo}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
     </div>
   );
 }

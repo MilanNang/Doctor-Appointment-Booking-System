@@ -13,15 +13,28 @@ cloudinary.config({
 // ✅ Upload image buffer to Cloudinary
 export const uploadToCloudinary = async (buffer) => {
   return new Promise((resolve, reject) => {
+    if (!buffer) {
+      return reject(new Error("No buffer provided"));
+    }
+
     const stream = cloudinary.uploader.upload_stream(
       {
-        folder: "doctor-profiles", // optional folder name
+        folder: "doctor-profiles",
+        resource_type: "auto",
       },
       (error, result) => {
-        if (error) return reject(error);
+        if (error) {
+          console.error("Cloudinary error details:", error);
+          return reject(new Error(`Cloudinary upload failed: ${error.message}`));
+        }
         resolve(result.secure_url);
       }
     );
+
+    stream.on("error", (error) => {
+      reject(new Error(`Stream error: ${error.message}`));
+    });
+
     stream.end(buffer);
   });
 };

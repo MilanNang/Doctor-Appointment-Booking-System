@@ -4,17 +4,17 @@ import UnifiedHeader from "../Componet/UnifiedHeader";
 
 const PatientLayout = () => {
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-white">
       {/* Sidebar */}
       <Sidebar />
 
       {/* Main content area */}
-      <div className="flex flex-col flex-1">
+      <div className="flex flex-col flex-1 overflow-hidden">
         {/* Header */}
         <UnifiedHeader />
 
         {/* Dynamic content (Dashboard, Bookings, etc.) */}
-        <main className="p-6 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>
       </div>

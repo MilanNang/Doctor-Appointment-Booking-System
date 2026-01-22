@@ -43,140 +43,131 @@ export default function DoctorDashboard() {
   }, []);
 
   if (loading)
-    return <div className="text-center text-gray-500 py-8">Loading...</div>;
+    return <div className="text-center muted py-8">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-yellow-50 to-yellow-100 px-6 py-8">
-      {/* STATS CARDS */}
-      <section className="mt-10 grid gap-6 md:grid-cols-4 max-w-7xl mx-auto">
-        {[
-          {
-            label: "Total Earnings",
-            value: `₹${dashboard.totalEarnings}`,
-            change: `+12% from last month`,
-          },
-          {
-            label: "Active Patients",
-            value: dashboard.activePatients,
-            change: `+3 from last week`,
-          },
-          {
-            label: "This Month",
-            value: `₹${dashboard.thisMonthEarnings}`,
-            change: `+18% from last month`,
-          },
-          {
-            label: "Appointments",
-            value: dashboard.appointmentsCount,
-            change: `+5 from last month`,
-          },
-        ].map((stat, i) => (
-          <div key={i} className="bg-white rounded-lg shadow-sm p-5">
-            <div className="text-slate-600 text-sm">{stat.label}</div>
-            <div className="text-2xl font-bold mt-1">{stat.value}</div>
-            <div className="text-green-600 text-xs mt-2">{stat.change}</div>
+    <div className="space-y-6">
+
+      {/* Hero */}
+      <div className="card p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Dr. Dashboard 👨‍⚕️</h1>
+          <p className="muted mt-1">Track your earnings, bookings, and patient feedback.</p>
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button onClick={() => navigate("/doctor/profile")} className="btn-primary">Edit Profile</button>
+            <button onClick={() => navigate("/doctor/calendar")} className="px-4 py-2 rounded-md border text-sm">Update Availability</button>
           </div>
-        ))}
-      </section>
+        </div>
 
-      {/* RECENT BOOKINGS + QUICK ACTIONS */}
-      <section className="mt-10 grid gap-6 md:grid-cols-2 max-w-7xl mx-auto">
-        {/* Recent Bookings */}
-        <div className="bg-white rounded-lg shadow-sm p-5">
-          <h2 className="text-lg font-semibold mb-4">Recent Bookings</h2>
+        <div className="hidden md:block">
+          <div className="bg-white p-4 rounded-lg shadow text-right">
+            <div className="text-xs muted">Next booking</div>
+            {dashboard.recentBookings && dashboard.recentBookings[0] ? (
+              <div className="text-sm font-semibold">{dashboard.recentBookings[0].patient}</div>
+            ) : (
+              <div className="text-sm muted">No upcoming bookings</div>
+            )}
+          </div>
+        </div>
+      </div>
 
-          {dashboard.recentBookings?.length > 0 ? (
-            dashboard.recentBookings.map((booking, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between border-b border-slate-100 py-4 last:border-0"
-              >
-                <div>
-                  <div className="font-medium">{booking.patient ?? "N/A"}</div>
-                  <div className="text-sm text-slate-500">{booking.service ?? "Consultation"}</div>
-                  <div className="text-xs text-slate-400">
-                    {booking.date ? new Date(booking.date).toLocaleDateString() : "N/A"}
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="card p-4">
+          <div className="text-xs muted">Total Earnings</div>
+          <div className="text-2xl font-bold mt-2">₹{dashboard.totalEarnings}</div>
+          <div className="text-xs text-green-600 mt-1">+12% from last month</div>
+        </div>
+        <div className="card p-4">
+          <div className="text-xs muted">This Month</div>
+          <div className="text-2xl font-bold mt-2">₹{dashboard.thisMonthEarnings}</div>
+          <div className="text-xs text-green-600 mt-1">+18% from last month</div>
+        </div>
+        <div className="card p-4">
+          <div className="text-xs muted">Active Patients</div>
+          <div className="text-2xl font-bold mt-2">{dashboard.activePatients}</div>
+          <div className="text-xs text-green-600 mt-1">+3 from last week</div>
+        </div>
+        <div className="card p-4">
+          <div className="text-xs muted">Total Appointments</div>
+          <div className="text-2xl font-bold mt-2">{dashboard.appointmentsCount}</div>
+          <div className="text-xs text-green-600 mt-1">+5 from last month</div>
+        </div>
+      </div>
+
+      {/* Main Columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Left: Recent Bookings */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="card p-4">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-semibold">Recent Bookings</h3>
+              <button onClick={() => navigate("/doctor/bookings")} className="text-sm text-yellow-600">View all</button>
+            </div>
+
+            {dashboard.recentBookings && dashboard.recentBookings.length > 0 ? (
+              dashboard.recentBookings.map((booking, i) => (
+                <div key={i} className="p-3 rounded-lg border mb-3 flex items-center justify-between hover:shadow-sm">
+                  <div>
+                    <div className="font-semibold">{booking.patient || 'N/A'}</div>
+                    <div className="text-sm muted">{booking.service || 'Consultation'} · {booking.date ? new Date(booking.date).toLocaleDateString() : 'N/A'}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-semibold text-yellow-600">₹{booking.price || 0}</div>
+                    <div className={`text-xs mt-1 px-2 py-1 rounded-full ${booking.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{booking.status || 'pending'}</div>
                   </div>
                 </div>
-                <div className="flex flex-col items-end">
-                  <span
-                    className={`px-2 py-1 text-xs rounded-full mb-1 ${
-                      booking.status === "confirmed"
-                        ? "bg-yellow-500 text-white"
-                        : "bg-purple-200 text-purple-800"
-                    }`}
-                  >
-                    {booking.status ?? "pending"}
-                  </span>
-                  <div className="font-semibold text-yellow-700">
-                    ₹{booking.price ?? 0}
-                  </div>
+              ))
+            ) : (
+              <div className="muted text-sm">No recent bookings</div>
+            )}
+          </div>
+        </div>
+
+        {/* Right: Performance & Quick Actions */}
+        <div className="space-y-4">
+          <div className="card p-4">
+            <h3 className="font-semibold mb-3">Performance</h3>
+
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between items-center">
+                  <div className="text-sm muted">Rating</div>
+                  <div className="font-semibold">{dashboard.averageRating || '0.0'} ★</div>
                 </div>
               </div>
-            ))
-          ) : (
-            <p className="text-gray-500">No bookings yet.</p>
-          )}
 
-          <button
-            onClick={() => navigate("/doctor/bookings")}
-            className="mt-4 w-full rounded-lg border border-yellow-300 py-2 text-yellow-700 font-medium"
-          >
-            View All Bookings
-          </button>
-        </div>
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <div className="text-sm muted">Success Rate</div>
+                  <div className="font-semibold text-sm">{dashboard.appointmentSuccessRate || 0}%</div>
+                </div>
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-yellow-500" style={{ width: `${dashboard.appointmentSuccessRate || 0}%` }}></div>
+                </div>
+              </div>
 
-        {/* Quick Actions */}
-        <div className="bg-white rounded-lg shadow-sm p-5">
-          <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
-
-          <div className="flex flex-col gap-3">
-            <button
-              onClick={() => navigate("/calendar")}
-              className="bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-4 rounded-lg"
-            >
-              Update Availability
-            </button>
-            <button
-              onClick={() => navigate("/services")}
-              className="border border-yellow-300 text-yellow-700 py-2 px-4 rounded-lg"
-            >
-              Add New Service
-            </button>
-            <button className="border border-yellow-200 text-slate-700 py-2 px-4 rounded-lg">
-              View Analytics
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* PERFORMANCE OVERVIEW */}
-      <section className="mt-10 max-w-7xl mx-auto">
-        <div className="bg-white rounded-lg shadow-sm p-5 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex flex-col items-center flex-1">
-            <div className="text-2xl font-bold text-yellow-600">{dashboard.averageRating ?? "0.0"}</div>
-            <div className="text-sm text-slate-600">Average Rating</div>
-            <div className="mt-1 text-yellow-500">★★★★★</div>
-          </div>
-
-          <div className="flex flex-col items-center flex-1">
-            <div className="text-2xl font-bold text-purple-600">{dashboard.appointmentSuccessRate ?? 0}%</div>
-            <div className="text-sm text-slate-600">Appointment Success</div>
-            <div className="w-full bg-purple-100 h-2 rounded mt-2">
-              <div
-                className="bg-purple-500 h-2 rounded"
-                style={{ width: `${dashboard.appointmentSuccessRate ?? 0}%` }}
-              ></div>
+              <div>
+                <div className="flex justify-between items-center">
+                  <div className="text-sm muted">Avg Response</div>
+                  <div className="font-semibold">{dashboard.avgResponseTime || 24}h</div>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-col items-center flex-1">
-            <div className="text-2xl font-bold text-slate-800">{dashboard.avgResponseTime ?? 24}h</div>
-            <div className="text-sm text-slate-600">Avg Response Time</div>
-            <div className="mt-1 text-green-600 text-xs font-medium">Excellent</div>
+          <div className="card p-4">
+            <h3 className="font-semibold mb-3">Actions</h3>
+            <div className="space-y-2">
+              <button className="w-full text-left text-sm px-3 py-2 rounded hover:bg-gray-50">📊 View Analytics</button>
+              <button className="w-full text-left text-sm px-3 py-2 rounded hover:bg-gray-50">💬 Messages</button>
+              <button className="w-full text-left text-sm px-3 py-2 rounded hover:bg-gray-50">⚙️ Settings</button>
+            </div>
           </div>
         </div>
-      </section>
+      </div>
+
     </div>
   );
 }

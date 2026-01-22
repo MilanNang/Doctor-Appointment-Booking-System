@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import API from "../util/api";
 import { useSelector, useDispatch } from "react-redux";
 import { setDoctorProfile } from "../../Redux/doctorSlice";
+import { showToast } from "../../Redux/toastSlice";
 import { useNavigate } from "react-router-dom";
 
 export default function DoctorProfile() {
@@ -67,176 +68,207 @@ export default function DoctorProfile() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Create form data
       const formData = new FormData();
-      formData.append("name", doctor.name);
-      formData.append("specialization", doctor.specialization);
-      formData.append("hospital", doctor.hospital);
-      formData.append("experience", doctor.experience);
-      formData.append("fees", Number(doctor.fee));
-      formData.append("contact", doctor.contact);
-      formData.append("about", doctor.about);
-      formData.append("availability", JSON.stringify(doctor.availability));
-      if (doctor.profileImage instanceof File) {
+      
+      // Add all fields (even if empty, backend will handle it)
+      formData.append("specialization", doctor.specialization || "");
+      formData.append("experience", doctor.experience || 0);
+      formData.append("fees", doctor.fee || doctor.fees || 0);
+      formData.append("about", doctor.about || "");
+      formData.append("location", doctor.location || "");
+      formData.append("availability", JSON.stringify(doctor.availability || {}));
+      
+      // Only append image if it's a File object (not a string URL)
+      if (doctor.profileImage && doctor.profileImage instanceof File) {
+        console.log("📎 Adding image to form:", doctor.profileImage.name);
         formData.append("profileImage", doctor.profileImage);
+      } else {
+        console.log("ℹ️  No image file to upload (using existing or none)");
       }
 
-      const { data } = await API.post("/doctors/profile", formData, {
+      console.log("📤 Sending profile update...");
+      const response = await API.post("/doctors/profile", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      setDoctor({ ...doctor, ...data.doctor, fee: data.doctor.fees });
-      setPreviewImage(data.doctor.profileImage || "");
-      dispatch(setDoctorProfile(data.doctor));
+      console.log("✅ Response:", response.data);
+      
+      if (response.data.doctor) {
+        setDoctor({ ...response.data.doctor, fee: response.data.doctor.fees });
+        setPreviewImage(response.data.doctor.profileImage || previewImage);
+        dispatch(setDoctorProfile(response.data.doctor));
+      }
+      
       setEditMode(false);
-      alert("Profile saved successfully!");
+      dispatch(showToast({ message: "Profile saved successfully!", type: "success" }));
+      
     } catch (err) {
-      console.error(err);
-      alert("Error saving profile");
+      console.error("❌ Save error:", err);
+      const errorMessage = err.response?.data?.error || err.message || "Error saving profile";
+      dispatch(showToast({ message: errorMessage, type: "error" }));
     } finally {
       setSaving(false);
     }
   };
 
   if (loading)
-    return <div className="text-center text-gray-500 py-8">Loading...</div>;
+    return <div className="text-center text-gray-500 py-20">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-yellow-50 to-yellow-100 px-6 py-8">
-      {/* HEADER */}
-      <header className="max-w-5xl mx-auto flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold">Doctor Profile</h1>
-        <button
-          onClick={() => (editMode ? handleSave() : setEditMode(true))}
-          disabled={saving}
-          className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg"
-        >
-          {editMode ? (saving ? "Saving..." : "Save Profile") : "Edit Profile"}
-        </button>
-      </header>
-
-      {/* PROFILE IMAGE & INFO */}
-      <section className="max-w-5xl mx-auto bg-white rounded-lg shadow-sm p-6 flex items-center gap-6 mb-6">
-        <div className="relative w-24 h-24 rounded-full bg-yellow-100 border-2 border-yellow-400 flex items-center justify-center text-gray-400 overflow-hidden">
-          {previewImage && (
-            <img
-              src={previewImage}
-              alt="Profile"
-              className="w-full h-full object-cover"
-            />
-          )}
-          {editMode && (
-            <label className="absolute bottom-0 right-0 bg-yellow-500 text-white rounded-full p-1 cursor-pointer text-xs">
-              📷
-              <input type="file" className="hidden" onChange={handleFileChange} />
-            </label>
-          )}
-        </div>
-
-        <div className="flex-1 space-y-2">
-          {editMode ? (
-            <>
-              <input
-                placeholder="Full Name"
-                value={doctor.name}
-                onChange={(e) => handleChange("name", e.target.value)}
-                className="block w-full border rounded px-3 py-2"
-              />
-              <input
-                placeholder="Specialization"
-                value={doctor.specialization}
-                onChange={(e) => handleChange("specialization", e.target.value)}
-                className="block w-full border rounded px-3 py-2"
-              />
-              <input
-                placeholder="Clinic / Hospital"
-                value={doctor.hospital}
-                onChange={(e) => handleChange("hospital", e.target.value)}
-                className="block w-full border rounded px-3 py-2"
-              />
-              <input
-                placeholder="Experience (Years)"
-                type="number"
-                value={doctor.experience}
-                onChange={(e) => handleChange("experience", e.target.value)}
-                className="block w-full border rounded px-3 py-2"
-              />
-              <input
-                placeholder="Contact / Address"
-                value={doctor.contact}
-                onChange={(e) => handleChange("contact", e.target.value)}
-                className="block w-full border rounded px-3 py-2"
-              />
-              <input
-                type="number"
-                placeholder="Consultation Fee"
-                value={doctor.fee}
-                onChange={(e) => handleChange("fee", e.target.value)}
-                className="block w-full border rounded px-3 py-2"
-              />
-            </>
-          ) : (
-            <>
-              <h2 className="text-2xl font-bold">{doctor.name}</h2>
-              <p className="text-yellow-600 font-medium">{doctor.specialization}</p>
-              <p className="text-slate-500">{doctor.hospital}</p>
-              <p className="text-slate-500">Experience: {doctor.experience} years</p>
-              <p className="text-slate-500">Contact: {doctor.contact}</p>
-              <p className="text-yellow-600 font-bold text-xl">₹{doctor.fee} per session</p>
-            </>
-          )}
-        </div>
-
-        {/* BUTTON TO SET AVAILABILITY */}
-        {!editMode && (
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={() => navigate("/doctor/calendar")}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg"
-            >
-              Set Availability
-            </button>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white p-6 md:p-8">
+      <div className="max-w-5xl mx-auto">
+        {/* HEADER */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900">Your Profile</h1>
+            <p className="text-gray-600 mt-2">Manage your professional information</p>
           </div>
-        )}
-      </section>
-
-      {/* ABOUT */}
-      <section className="max-w-5xl mx-auto mt-6 bg-white rounded-lg shadow-sm p-6">
-        <h3 className="text-lg font-semibold mb-2">About Me</h3>
-        {editMode ? (
-          <textarea
-            placeholder="Write something about yourself"
-            value={doctor.about}
-            onChange={(e) => handleChange("about", e.target.value)}
-            className="w-full border rounded px-3 py-2"
-            rows="4"
-          />
-        ) : (
-          <p className="text-slate-600">{doctor.about}</p>
-        )}
-      </section>
-
-      {/* WEEKLY AVAILABILITY VIEW */}
-     <section className="max-w-5xl mx-auto mt-6 bg-white rounded-lg shadow-sm p-6">
-  <h3 className="text-lg font-semibold mb-4">Weekly Availability</h3>
-  {doctor.availability && Object.keys(doctor.availability).length > 0 ? (
-    <div className="space-y-3">
-      {Object.entries(doctor.availability).map(([day, slots]) => (
-        <div key={day}>
-          <h4 className="font-semibold text-yellow-700">{day}</h4>
-          <ul className="pl-4 mt-1 space-y-1">
-            {slots.map((slot, i) => (
-              <li key={i} className="text-gray-600 border-l-4 border-yellow-400 pl-3">
-                {slot.start} – {slot.end} ({slot.duration} min)
-              </li>
-            ))}
-          </ul>
+          <button
+            onClick={() => (editMode ? handleSave() : setEditMode(true))}
+            disabled={saving}
+            className="btn-primary disabled:opacity-60"
+          >
+            {editMode ? (saving ? "Saving..." : "Save Profile") : "Edit Profile"}
+          </button>
         </div>
-      ))}
-    </div>
-  ) : (
-    <p className="text-gray-500">No availability set yet.</p>
-  )}
-</section>
+
+        {/* PROFILE IMAGE & INFO */}
+        <div className="card p-8 mb-8">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-8">
+            <div className="relative w-32 h-32 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-gray-400 overflow-hidden flex-shrink-0">
+              {previewImage && (
+                <img
+                  src={previewImage}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              )}
+              {editMode && (
+                <label className="absolute bottom-0 right-0 bg-yellow-600 text-white rounded-full p-2 cursor-pointer text-lg hover:bg-yellow-700 transition">
+                  📷
+                  <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
+                </label>
+              )}
+            </div>
+
+            <div className="flex-1 space-y-4">
+              {editMode ? (
+                <>
+                  <input
+                    placeholder="Full Name"
+                    value={doctor.name}
+                    onChange={(e) => handleChange("name", e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  />
+                  <label className="block text-sm font-medium text-gray-700">Specialization</label>
+                  <select
+                    value={doctor.specialization}
+                    onChange={(e) => handleChange("specialization", e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  >
+                    <option value="">Select specialization...</option>
+                    <option value="Cardiologists">Cardiologists</option>
+                    <option value="Pediatricians">Pediatricians</option>
+                    <option value="Neurologists">Neurologists</option>
+                    <option value="Dermatologists">Dermatologists</option>
+                    <option value="Dentists">Dentists</option>
+                    <option value="General Physicians">General Physicians</option>
+                  </select>
+                  <input
+                    placeholder="Clinic / Hospital"
+                    value={doctor.hospital}
+                    onChange={(e) => handleChange("hospital", e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  />
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <input
+                      placeholder="Experience (Years)"
+                      type="number"
+                      value={doctor.experience}
+                      onChange={(e) => handleChange("experience", e.target.value)}
+                      className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Consultation Fee (₹)"
+                      value={doctor.fee}
+                      onChange={(e) => handleChange("fee", e.target.value)}
+                      className="px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    />
+                  </div>
+                  <input
+                    placeholder="Contact / Address"
+                    value={doctor.contact}
+                    onChange={(e) => handleChange("contact", e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  />
+                </>
+              ) : (
+                <>
+                  <h2 className="text-3xl font-bold text-gray-900">{doctor.name}</h2>
+                  <p className="text-lg text-yellow-600 font-semibold">{doctor.specialization}</p>
+                  <div className="space-y-2 text-gray-600">
+                    <p><span className="font-medium text-gray-900">Clinic:</span> {doctor.hospital}</p>
+                    <p><span className="font-medium text-gray-900">Experience:</span> {doctor.experience} years</p>
+                    <p><span className="font-medium text-gray-900">Fee:</span> <span className="text-yellow-600 font-bold text-xl">₹{doctor.fee}</span> per consultation</p>
+                    <p><span className="font-medium text-gray-900">Contact:</span> {doctor.contact}</p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {!editMode && (
+              <button
+                onClick={() => navigate("/doctor/calendar")}
+                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium whitespace-nowrap"
+              >
+                Set Availability
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ABOUT */}
+        <div className="card p-8 mb-8">
+          <h3 className="text-2xl font-bold text-gray-900 mb-4">About Me</h3>
+          {editMode ? (
+            <textarea
+              placeholder="Write something about yourself..."
+              value={doctor.about}
+              onChange={(e) => handleChange("about", e.target.value)}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              rows="5"
+            />
+          ) : (
+            <p className="text-gray-600 leading-relaxed text-lg">{doctor.about || "No information added yet."}</p>
+          )}
+        </div>
+
+        {/* WEEKLY AVAILABILITY VIEW */}
+        <div className="card p-8">
+          <h3 className="text-2xl font-bold text-gray-900 mb-6">Weekly Availability</h3>
+          {doctor.availability && Object.keys(doctor.availability).length > 0 ? (
+            <div className="space-y-4">
+              {Object.entries(doctor.availability).map(([day, slots]) => (
+                <div key={day} className="border border-gray-200 rounded-lg p-4 hover:bg-yellow-50 transition">
+                  <h4 className="font-bold text-yellow-600 mb-3 text-lg">{day}</h4>
+                  <div className="flex flex-wrap gap-3">
+                    {slots.map((slot, i) => (
+                      <div key={i} className="bg-yellow-50 border border-yellow-200 px-4 py-2 rounded-lg text-sm text-gray-700">
+                        <span className="font-semibold">{slot.start}</span> – <span className="font-semibold">{slot.end}</span>
+                        <span className="text-gray-500 ml-2">({slot.duration} min)</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center py-8">No availability set yet. <button onClick={() => navigate("/doctor/calendar")} className="text-yellow-600 hover:underline font-medium">Click here</button> to set your schedule.</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

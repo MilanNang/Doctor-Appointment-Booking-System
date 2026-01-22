@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { removeToast } from "../Redux/toastSlice";
 import { CheckCircle, AlertCircle, Info, AlertTriangle, X } from "lucide-react";
@@ -5,6 +6,39 @@ import { CheckCircle, AlertCircle, Info, AlertTriangle, X } from "lucide-react";
 export default function ToastContainer() {
   const notifications = useSelector((state) => state.toast.notifications);
   const dispatch = useDispatch();
+
+  const timersRef = useRef({});
+
+  useEffect(() => {
+    // Create timers only for notifications that don't already have one
+    notifications.forEach((notif) => {
+      if (timersRef.current[notif.id]) return;
+
+      const duration = notif.duration || 3000;
+      const t = setTimeout(() => {
+        dispatch(removeToast(notif.id));
+        // cleanup this timer reference after removal
+        delete timersRef.current[notif.id];
+      }, duration);
+
+      timersRef.current[notif.id] = t;
+    });
+
+    // Clear timers for notifications that were removed
+    const existingIds = notifications.map((n) => n.id);
+    Object.keys(timersRef.current).forEach((id) => {
+      if (!existingIds.includes(Number(id))) {
+        clearTimeout(timersRef.current[id]);
+        delete timersRef.current[id];
+      }
+    });
+
+    // cleanup on unmount
+    return () => {
+      Object.values(timersRef.current).forEach((t) => clearTimeout(t));
+      timersRef.current = {};
+    };
+  }, [notifications, dispatch]);
 
   const getIcon = (type) => {
     switch (type) {
@@ -23,14 +57,14 @@ export default function ToastContainer() {
   const getBgColor = (type) => {
     switch (type) {
       case "success":
-        return "bg-green-50 border-green-200";
+        return "bg-white border-l-4 border-green-400";
       case "error":
-        return "bg-red-50 border-red-200";
+        return "bg-white border-l-4 border-red-400";
       case "warning":
-        return "bg-yellow-50 border-yellow-200";
+        return "bg-white border-l-4 border-yellow-400";
       case "info":
       default:
-        return "bg-blue-50 border-blue-200";
+        return "bg-white border-l-4 border-blue-400";
     }
   };
 
@@ -53,41 +87,41 @@ export default function ToastContainer() {
       {notifications.map((notif) => (
         <div
           key={notif.id}
-          className={`flex items-start gap-3 p-4 rounded-lg border shadow-lg animate-slide-in ${getBgColor(
+          className={`flex items-start gap-3 p-4 rounded-xl bg-white shadow-lg animate-slide-in ${getBgColor(
             notif.type
           )}`}
         >
           <div className="flex-shrink-0 pt-0.5">{getIcon(notif.type)}</div>
 
           <div className="flex-1">
-            <p className={`text-sm font-medium ${getTextColor(notif.type)}`}>
-              {notif.message}
+            <p className={`text-sm font-semibold ${getTextColor(notif.type)}`}>
+              {notif.title || (notif.type === 'info' ? 'Notice' : notif.type)}
             </p>
+            <p className="text-sm text-gray-600 mt-1">{notif.message}</p>
+            <div className="h-1 bg-gray-100 rounded-full overflow-hidden mt-3">
+              <div
+                className="bg-yellow-500 h-1"
+                style={{ width: `${Math.min(100, ((notif.duration||3000)/3000)*100)}%` }}
+              />
+            </div>
           </div>
 
           <button
             onClick={() => dispatch(removeToast(notif.id))}
-            className="flex-shrink-0 text-gray-400 hover:text-gray-600"
+            className="flex-shrink-0 text-gray-400 hover:text-gray-600 ml-3"
+            aria-label="Close notification"
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </div>
       ))}
 
       <style>{`
         @keyframes slide-in {
-          from {
-            transform: translateX(400px);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
+          from { transform: translateY(16px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
         }
-        .animate-slide-in {
-          animation: slide-in 0.3s ease-out;
-        }
+        .animate-slide-in { animation: slide-in 0.28s cubic-bezier(.2,.8,.2,1); }
       `}</style>
     </div>
   );

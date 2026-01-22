@@ -14,12 +14,22 @@ import Doctor from "../models/Doctor.js";
 
 const router = express.Router();
 
-// Doctor profile
+// Doctor profile - with error handling middleware
+const uploadMiddleware = upload.single("profileImage");
+
 router.post(
   "/profile",
   protect,
   doctorOnly,
-  upload.single("profileImage"),
+  (req, res, next) => {
+    uploadMiddleware(req, res, (err) => {
+      if (err) {
+        console.error("❌ Multer error:", err.message);
+        return res.status(400).json({ error: `File upload error: ${err.message}` });
+      }
+      next();
+    });
+  },
   createOrUpdateDoctor
 );
 

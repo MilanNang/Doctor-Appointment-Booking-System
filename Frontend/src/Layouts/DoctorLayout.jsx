@@ -6,17 +6,17 @@ import UnifiedHeader from "../Componet/UnifiedHeader";
 
 export default function DoctorLayout() {
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-white">
       {/* Sidebar stays on the left */}
       <Sidebar />
 
       {/* Right side: Header + main content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header at the top */}
         <UnifiedHeader />
 
         {/* Main content area */}
-        <main className="flex-1 bg-gray-50 p-6 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>
       </div>

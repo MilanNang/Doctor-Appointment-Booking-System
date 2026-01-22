@@ -1,33 +1,42 @@
 import mongoose from "mongoose";
 
-const slotSchema = new mongoose.Schema({
-  start: String,
-  end: String,
-  duration: Number,
-});
-
 const doctorSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
-    required: true, // important!
+    required: true,
   },
-  name: String,
-  specialization: String,
-  hospital: String,
-  experience: Number,
-  fees: Number,
-  contact: String,
-  about: String,
-  profileImage: String,
+  specialization: {
+    type: String,
+    default: "",
+  },
+  experience: {
+    type: Number,
+    default: 0,
+  },
+  fees: {
+    type: Number,
+    default: 0,
+  },
+  about: {
+    type: String,
+    default: "",
+  },
+  location: {
+    type: String,
+    default: "",
+  },
+  profileImage: {
+    type: String,
+    default: "",
+  },
   availability: {
-    Sunday: [slotSchema],
-    Monday: [slotSchema],
-    Tuesday: [slotSchema],
-    Wednesday: [slotSchema],
-    Thursday: [slotSchema],
-    Friday: [slotSchema],
-    Saturday: [slotSchema],
+    type: Object,
+    default: {},
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
   },
 });
 

@@ -19,7 +19,6 @@ export default function PatientSidebar() {
     { path: "/patient/", label: "Dashboard", icon: <Home size={18} /> },
     { path: "/patient/browse-services", label: "Browse Doctors", icon: <Search size={18} /> },
     { path: "/patient/appointments", label: "My Appointments", icon: <BookOpen size={18} /> },
-    { path: "/patient/calendar", label: "Calendar", icon: <Calendar size={18} /> },
   ];
 
   // Close dropdown if click outside
@@ -38,15 +37,8 @@ export default function PatientSidebar() {
       <div>
         {/* Logo / Title */}
         <div className="mb-10">
-          <h1 className="text-2xl font-bold text-yellow-600">MediConnect</h1>
+          <h1 className="text-2xl font-bold text-yellow-600">Happy Health</h1>
           <p className="text-sm text-slate-500">Patient Portal</p>
-        </div>
-
-        {/* Patient Info */}
-        <div className="mb-6 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-          <p className="text-xs text-gray-500 mb-1">Patient</p>
-          <p className="text-sm font-semibold text-gray-800">{user?.name || "Patient"}</p>
-          <p className="text-xs text-gray-500">{user?.email || "email@example.com"}</p>
         </div>
 
         {/* Navigation */}

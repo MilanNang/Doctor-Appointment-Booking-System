@@ -9,47 +9,99 @@ import Appointment from "../models/Appointment.js";
 // Create or update doctor profile
 export const createOrUpdateDoctor = async (req, res) => {
   try {
-    let { specialization, experience, fees, availability, about, location } = req.body;
+    console.log("=== Doctor Profile Update ===");
+    console.log("User:", req.user);
+    console.log("Body:", req.body);
+    console.log("File:", req.file ? `${req.file.originalname} (${req.file.size} bytes)` : "No file");
 
-    // ✅ Parse availability if it's a string
-    if (typeof availability === "string") {
-      availability = JSON.parse(availability);
+    // Check if user exists
+    if (!req.user || !req.user._id) {
+      console.error("❌ No user found in request");
+      return res.status(401).json({ error: "Unauthorized: No user" });
     }
 
-    let profileImageUrl;
-    if (req.file) {
-      profileImageUrl = await uploadToCloudinary(req.file.buffer);
-    }
+    const { specialization, experience, fees, availability, about, location } = req.body;
 
     let doctor = await Doctor.findOne({ user: req.user._id });
 
     if (doctor) {
-      doctor.specialization = specialization || doctor.specialization;
-      doctor.experience = experience || doctor.experience;
-      doctor.fees = fees || doctor.fees;
-      doctor.availability = availability || doctor.availability;
-      doctor.about = about || doctor.about;
-      doctor.location = location || doctor.location;
-      if (profileImageUrl) doctor.profileImage = profileImageUrl;
+      // Update existing
+      console.log("📝 Updating existing doctor");
+      
+      if (specialization) doctor.specialization = typeof specialization === 'string' ? specialization.trim() : specialization;
+      if (experience) doctor.experience = Number(experience);
+      if (fees) doctor.fees = Number(fees);
+      if (about) doctor.about = about;
+      if (location) doctor.location = location;
+      
+      if (availability) {
+        try {
+          doctor.availability = typeof availability === "string" ? JSON.parse(availability) : availability;
+        } catch (e) {
+          console.log("⚠️  Could not parse availability, skipping");
+          doctor.availability = {};
+        }
+      }
 
-      await doctor.save();
-      return res.json({ message: "Doctor profile updated", doctor });
+      // Handle image upload if present
+      if (req.file) {
+        try {
+          console.log("📤 Uploading image to Cloudinary...");
+          const imageUrl = await uploadToCloudinary(req.file.buffer);
+          doctor.profileImage = imageUrl;
+          console.log("✅ Image uploaded:", imageUrl);
+        } catch (imgErr) {
+          console.error("⚠️ Image upload failed:", imgErr.message);
+          // Continue without image
+        }
+      }
+
+      const savedDoctor = await doctor.save();
+      console.log("✅ Doctor profile saved");
+      return res.json({ message: "Doctor profile updated", doctor: savedDoctor });
     } else {
-      doctor = await Doctor.create({
+      // Create new
+      console.log("➕ Creating new doctor profile");
+      
+      doctor = new Doctor({
         user: req.user._id,
-        specialization,
-        experience,
-        fees,
-        availability,
-        about,
-        location,
-        profileImage: profileImageUrl,
+        specialization: typeof specialization === 'string' ? specialization.trim() : (specialization || ""),
+        experience: Number(experience) || 0,
+        fees: Number(fees) || 0,
+        about: about || "",
+        location: location || "",
+        availability: {},
       });
-      return res.json({ message: "Doctor profile created", doctor });
+
+      if (availability) {
+        try {
+          doctor.availability = typeof availability === "string" ? JSON.parse(availability) : availability;
+        } catch (e) {
+          doctor.availability = {};
+        }
+      }
+
+      // Handle image upload if present
+      if (req.file) {
+        try {
+          console.log("📤 Uploading image to Cloudinary...");
+          const imageUrl = await uploadToCloudinary(req.file.buffer);
+          doctor.profileImage = imageUrl;
+          console.log("✅ Image uploaded:", imageUrl);
+        } catch (imgErr) {
+          console.error("⚠️ Image upload failed:", imgErr.message);
+          // Continue without image
+        }
+      }
+
+      const savedDoctor = await doctor.save();
+      console.log("✅ Doctor profile created");
+      return res.json({ message: "Doctor profile created", doctor: savedDoctor });
     }
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: error.message });
+    console.error("❌ Error in createOrUpdateDoctor:", error);
+    console.error("Error stack:", error.stack);
+    res.status(500).json({ error: error.message || "Failed to save doctor profile" });
   }
 };
 

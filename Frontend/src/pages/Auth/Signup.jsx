@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
+import { showToast } from "../../Redux/toastSlice";
 import API from "../util/api";
 import { loginSuccess } from "../../Redux/authSlice";
 import { setDoctorProfile } from "../../Redux/doctorSlice";
@@ -24,7 +25,7 @@ export default function Signup() {
 
   const handleSignup = async () => {
     if (password !== confirmPassword) {
-      alert("Passwords do not match!");
+      dispatch(showToast({ message: "Passwords do not match!", type: "error" }));
       return;
     }
 
@@ -32,7 +33,7 @@ export default function Signup() {
       await API.post("/auth/register", { name, email, password, role });
       setStage("verify");
     } catch (err) {
-      alert(err.response?.data?.message || "Signup failed");
+      dispatch(showToast({ message: err.response?.data?.message || "Signup failed", type: "error" }));
     }
   };
 
@@ -52,31 +53,29 @@ export default function Signup() {
         navigate("/patient/browse-services");
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Verification failed");
+      dispatch(showToast({ message: err.response?.data?.message || "Verification failed", type: "error" }));
     }
   };
 
   if (stage === "verify") {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gradient-to-r from-yellow-50 to-yellow-100">
-        <div className="bg-white p-8 rounded-2xl shadow-md w-96">
-          <h1 className="text-2xl font-bold text-center text-yellow-600 mb-2">
-            Verify Your Email
-          </h1>
-          <p className="text-gray-600 text-center mb-6">
-            Enter the verification code sent to <strong>{email}</strong>
-          </p>
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
+        <div className="card w-96 p-8">
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">Verify Email</h1>
+            <p className="muted text-sm">Enter the code sent to <strong>{email}</strong></p>
+          </div>
 
           <input
             type="text"
             placeholder="Enter verification code"
-            className="w-full mb-4 px-4 py-2 border rounded-lg bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            className="w-full mb-4 px-4 py-2 border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
             value={verificationCode}
             onChange={(e) => setVerificationCode(e.target.value)}
           />
 
           <button
-            className="w-full py-3 rounded-lg font-semibold text-white bg-yellow-500 hover:bg-yellow-600"
+            className="w-full py-2.5 rounded-md font-semibold text-white bg-yellow-500 hover:bg-yellow-600"
             onClick={handleVerify}
           >
             Verify Email
@@ -87,24 +86,33 @@ export default function Signup() {
   }
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gradient-to-r from-yellow-50 to-yellow-100">
-      <div className="bg-white p-8 rounded-2xl shadow-md w-96">
-        <h1 className="text-2xl font-bold text-center text-yellow-600 mb-2">Appointment App</h1>
-        <h2 className="text-lg font-semibold text-center text-gray-800 mb-6">Create Your Account</h2>
+    <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
+      <div className="card w-96 p-8">
+        <div className="text-center mb-8">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-600 mx-auto mb-3 flex items-center justify-center text-white font-bold text-lg">H</div>
+          <h1 className="text-2xl font-bold text-gray-800">Join Happy Health</h1>
+          <p className="muted text-sm mt-1">Create your account to get started</p>
+        </div>
 
         {/* Role Selector */}
-        <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
+        <div className="flex mb-6 bg-gray-100 rounded-md p-1">
           <button
             onClick={() => setRole("doctor")}
-            className={`flex-1 py-2 rounded-md text-sm font-medium ${role === "doctor" ? "text-white" : "text-gray-700 hover:bg-gray-200"}`}
-            style={{ backgroundColor: role === "doctor" ? "#eab308" : "transparent" }}
+            className={`flex-1 py-2 rounded text-sm font-medium ${
+              role === "doctor"
+                ? "text-white bg-yellow-500"
+                : "text-gray-700 hover:bg-gray-200"
+            }`}
           >
             Doctor
           </button>
           <button
             onClick={() => setRole("patient")}
-            className={`flex-1 py-2 rounded-md text-sm font-medium ${role === "patient" ? "text-white" : "text-gray-700 hover:bg-gray-200"}`}
-            style={{ backgroundColor: role === "patient" ? "#C9A3D4" : "transparent" }}
+            className={`flex-1 py-2 rounded text-sm font-medium ${
+              role === "patient"
+                ? "text-white bg-blue-500"
+                : "text-gray-700 hover:bg-gray-200"
+            }`}
           >
             Patient
           </button>
@@ -114,7 +122,7 @@ export default function Signup() {
         <input
           type="text"
           placeholder="Full Name"
-          className="w-full mb-4 px-4 py-2 border rounded-lg bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+          className="w-full mb-4 px-4 py-2 border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
@@ -123,7 +131,7 @@ export default function Signup() {
         <input
           type="email"
           placeholder="Email"
-          className="w-full mb-4 px-4 py-2 border rounded-lg bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+          className="w-full mb-4 px-4 py-2 border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -133,11 +141,11 @@ export default function Signup() {
           <input
             type={showPassword ? "text" : "password"}
             placeholder="Password"
-            className="w-full px-4 py-2 border rounded-lg bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            className="w-full px-4 py-2 border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <span className="absolute right-3 top-2.5 cursor-pointer text-gray-500" onClick={() => setShowPassword(!showPassword)}>
+          <span className="absolute right-3 top-2.5 cursor-pointer text-gray-400 hover:text-gray-600" onClick={() => setShowPassword(!showPassword)}>
             {showPassword ? "🙈" : "👁️"}
           </span>
         </div>
@@ -147,26 +155,28 @@ export default function Signup() {
           <input
             type={showConfirmPassword ? "text" : "password"}
             placeholder="Confirm Password"
-            className="w-full px-4 py-2 border rounded-lg bg-yellow-50 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            className="w-full px-4 py-2 border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
           />
-          <span className="absolute right-3 top-2.5 cursor-pointer text-gray-500" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+          <span className="absolute right-3 top-2.5 cursor-pointer text-gray-400 hover:text-gray-600" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
             {showConfirmPassword ? "🙈" : "👁️"}
           </span>
         </div>
 
         <button
-          className={`w-full py-3 rounded-lg font-semibold text-white transition ${role === "patient" ? "bg-purple-400 hover:bg-purple-500" : "bg-yellow-500 hover:bg-yellow-700"}`}
+          className={`w-full py-2.5 rounded-md font-semibold text-white transition ${
+            role === "patient" ? "bg-blue-500 hover:bg-blue-600" : "bg-yellow-500 hover:bg-yellow-600"
+          }`}
           onClick={handleSignup}
         >
-          Sign Up as {role === "patient" ? "Patient" : "Doctor"}
+          Create Account
         </button>
 
-        <p className="mt-4 text-sm text-center text-gray-600">
+        <p className="mt-4 text-sm text-center muted">
           Already have an account?{" "}
-          <Link to="/login" className="text-yellow-600 font-medium hover:underline">
-            Login
+          <Link to="/login" className="text-yellow-600 font-medium hover:text-yellow-700">
+            Sign in
           </Link>
         </p>
       </div>

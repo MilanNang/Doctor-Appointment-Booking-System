@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import API from "../util/api";
 import { setDoctorProfile } from "../../Redux/doctorSlice";
 import { logout } from "../../Redux/authSlice";
+import { showToast } from "../../Redux/toastSlice";
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
@@ -72,7 +73,7 @@ export default function Header() {
           )}
           <button
             className="p-2 rounded-full hover:bg-yellow-100"
-            onClick={() => alert("Notifications feature coming soon!")}
+            onClick={() => dispatch(showToast({ message: "Notifications feature coming soon!", type: "info" }))}
           >
             🔔
           </button>
@@ -132,10 +133,10 @@ export default function Header() {
                 </li>
                 <li>
                   <button
-                    onClick={() => navigate("/support")}
+                    onClick={() => navigate("/doctor/profile")}
                     className="w-full text-left block px-4 py-2 text-sm hover:bg-yellow-50"
                   >
-                    Support
+                    Settings
                   </button>
                 </li>
               </ul>

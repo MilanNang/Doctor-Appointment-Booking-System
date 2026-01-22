@@ -40,7 +40,9 @@ export default function UnifiedHeader() {
     try {
       const res = await API.get("/notifications");
       if (Array.isArray(res.data)) {
-        setNotifications(res.data.slice(0, 5)); // Show last 5 notifications
+        // show only unread notifications
+        const unread = res.data.filter((n) => !n.isRead);
+        setNotifications(unread.slice(0, 5)); // Show last 5 unread notifications
       }
     } catch (error) {
       console.log("Notifications not available");
@@ -83,7 +85,24 @@ export default function UnifiedHeader() {
         {/* Notification Bell */}
         <div className="relative" ref={notificationRef}>
           <button
-            onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+            onClick={async () => {
+              const opening = !isNotificationOpen;
+              setIsNotificationOpen(opening);
+
+              // If opening the dropdown, mark currently fetched notifications as read
+              if (opening && notifications.length > 0) {
+                try {
+                  await Promise.all(
+                    notifications.map((n) => API.put(`/notifications/${n._id}/read`))
+                  );
+                } catch (err) {
+                  console.error("Failed to mark notifications read", err);
+                } finally {
+                  // remove them from local list
+                  setNotifications([]);
+                }
+              }
+            }}
             className="relative p-2 rounded-full hover:bg-gray-100 transition"
           >
             <Bell size={20} className="text-gray-600" />
@@ -97,12 +116,12 @@ export default function UnifiedHeader() {
           {/* Notification Dropdown */}
           {isNotificationOpen && (
             <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
-              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+                <div className="p-4 border-b border-gray-200 flex justify-between items-center">
                 <h3 className="text-sm font-semibold text-gray-800">
                   Notifications
                 </h3>
                 <button
-                  onClick={() => setNotifications([])}
+                  onClick={fetchNotifications}
                   className="text-xs text-yellow-600 hover:text-yellow-700 font-medium"
                 >
                   Refresh
@@ -137,12 +156,13 @@ export default function UnifiedHeader() {
         </div>
 
         {/* Profile Avatar */}
-        <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
-          <div className="w-8 h-8 rounded-full bg-yellow-500 flex items-center justify-center text-white font-bold text-sm">
+        <div className="flex items-center gap-3 pl-4 border-l border-gray-100">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-600 shadow-md flex items-center justify-center text-white font-bold text-sm">
             {getInitial(user?.name)}
           </div>
           <div className="hidden sm:block">
             <p className="text-sm font-medium text-gray-800">{user?.name}</p>
+            <p className="text-xs text-gray-500">{user?.role}</p>
           </div>
         </div>
 

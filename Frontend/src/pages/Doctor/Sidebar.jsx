@@ -41,7 +41,7 @@ export default function Sidebar() {
       {/* Top Logo/Brand */}
       <div>
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-yellow-600">Mentifi</h1>
+          <h1 className="text-2xl font-bold text-yellow-600">Happy Health</h1>
           <p className="text-sm text-gray-500">Doctor Portal</p>
         </div>
 

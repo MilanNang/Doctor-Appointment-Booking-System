@@ -69,63 +69,102 @@ export default function MyAppointments() {
     ))
   );
 
-  if (loading) return <div className="p-6">Loading appointments...</div>;
+  if (loading) return <div className="p-6 text-center">Loading appointments...</div>;
 
   return (
-    <div className="p-6 bg-gradient-to-br from-yellow-50 to-white min-h-screen">
-      <h1 className="text-3xl font-bold text-slate-800 mb-2">My Appointments</h1>
-      <p className="text-slate-600 mb-6">Manage and track all your doctor bookings in one place</p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white p-6 md:p-8">
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">My Appointments</h1>
+          <p className="text-gray-600">Manage and track all your doctor bookings in one place</p>
+        </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {stats.map((s, i) => (
-          <div key={i} className="bg-white shadow-sm rounded-2xl p-5 border hover:shadow-md transition text-center">
-            <p className={`text-xl font-bold rounded-full px-3 py-1 inline-block ${s.color}`}>{s.value}</p>
-            <p className="text-sm mt-2 text-slate-600">{s.label}</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {stats.map((s, i) => (
+            <div key={i} className="card p-6 text-center hover:shadow-md transition">
+              <p className={`text-3xl font-bold rounded-full px-3 py-1 inline-block ${s.color}`}>{s.value}</p>
+              <p className="text-sm text-gray-600 mt-3">{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="card p-1 mb-8">
+          <div className="flex gap-0 overflow-x-auto">
+            {["All", "Upcoming", "Pending", "Confirmed", "Completed"].map((tab) => (
+              <button 
+                key={tab} 
+                onClick={() => setActiveTab(tab)} 
+                className={`flex-1 px-6 py-3 text-sm font-medium transition ${activeTab === tab 
+                  ? "bg-yellow-500 text-white rounded-lg m-1" 
+                  : "text-gray-600 hover:text-gray-900"}`}
+              >
+                {tab}
+              </button>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
 
-      <div className="flex gap-3 border-b mb-6 overflow-x-auto">
-        {["All", "Upcoming", "Pending", "Confirmed", "Completed"].map((tab) => (
-          <button key={tab} onClick={() => setActiveTab(tab)} className={`px-5 py-2 text-sm font-medium rounded-t-lg transition ${activeTab === tab ? "bg-yellow-500 text-white shadow" : "text-slate-600 hover:text-yellow-600"}`}>{tab}</button>
-        ))}
-      </div>
+        <div className="space-y-4">
+          {filteredAppointments.length === 0 && (
+            <div className="text-center card p-12">
+              <p className="text-gray-500 text-lg">No appointments found in this category</p>
+            </div>
+          )}
+          {filteredAppointments.map((appt) => (
+            <div key={appt._id} className="card p-6 hover:shadow-md transition">
+              <div className="flex items-start gap-4 mb-4">
+                <img 
+                  src={appt.doctor?.user?.avatar || appt.doctor?.avatar || 'https://via.placeholder.com/64'} 
+                  alt={appt.doctor?.user?.name || 'Doctor'} 
+                  className="w-16 h-16 rounded-full border-2 border-yellow-400 object-cover"
+                />
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-gray-900">
+                    {appt.doctor?.user?.name || appt.doctor?.name || 'Doctor'}
+                  </h3>
+                  <p className="text-sm text-yellow-600 font-medium">{appt.doctor?.specialization || appt.specialty || 'Specialist'}</p>
+                  <div className="flex items-center gap-4 text-sm text-gray-600 mt-2">
+                    <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> {appt.date}</span>
+                    <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {appt.time}</span>
+                  </div>
+                </div>
 
-      <div className="space-y-5">
-        {filteredAppointments.length === 0 && <div className="text-center text-slate-500">No appointments found</div>}
-        {filteredAppointments.map((appt) => (
-          <div key={appt._id} className="bg-white border rounded-2xl p-6 shadow-sm hover:shadow-md transition">
-            <div className="flex items-center gap-4">
-              <img src={appt.doctor?.user?.avatar || appt.doctor?.avatar || 'https://via.placeholder.com/64'} alt={appt.doctor?.user?.name || 'Doctor'} className="w-16 h-16 rounded-full border-2 border-yellow-400 object-cover" />
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                  {appt.doctor?.user?.name || appt.doctor?.name || 'Doctor'}
-                  <span className="flex items-center text-sm text-yellow-600"><Star className="w-4 h-4 fill-yellow-500 mr-1" /> {appt.doctor?.rating || appt.rating || '—'}</span>
-                </h3>
-                <p className="text-sm text-slate-500">{appt.doctor?.specialization || appt.specialty || ''}</p>
-
-                <div className="flex items-center gap-4 text-sm text-slate-600 mt-2">
-                  <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> {appt.date}</span>
-                  <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {appt.time}</span>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-yellow-600">₹{appt.fees || appt.fee || 0}</p>
+                  <span className={`text-xs font-medium px-3 py-1 mt-2 inline-block rounded-full ${
+                    appt.status === 'pending' ? 'bg-orange-100 text-orange-700' 
+                    : appt.status === 'approved' || appt.status === 'confirmed' ? 'bg-green-100 text-green-700' 
+                    : appt.status === 'completed' ? 'bg-blue-100 text-blue-700'
+                    : 'bg-red-100 text-red-700'
+                  }`}>
+                    {appt.status?.charAt(0).toUpperCase() + appt.status?.slice(1)}
+                  </span>
                 </div>
               </div>
 
-              <div className="text-right">
-                <p className="text-lg font-bold text-yellow-600 flex items-center justify-end gap-1"><DollarSign className="w-4 h-4" /> {appt.fees || appt.fee || 0}</p>
-                <span className={`text-xs font-medium px-3 py-1 mt-2 inline-block rounded-full ${appt.status === 'pending' ? 'bg-orange-100 text-orange-600' : appt.status === 'approved' || appt.status === 'confirmed' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>{appt.status}</span>
-              </div>
+              {appt.notes || appt.description && (
+                <p className="text-sm text-gray-600 mb-4 p-3 bg-gray-50 rounded-lg">{appt.notes || appt.description}</p>
+              )}
+
+              {appt.status !== 'completed' && appt.status !== 'cancelled' && (
+                <div className="flex gap-3 pt-4 border-t border-gray-200">
+                  <button 
+                    onClick={() => setConfirmDialog({ isOpen: true, appointmentId: appt._id, action: 'reschedule' })} 
+                    className="px-4 py-2 text-sm font-medium border border-yellow-400 text-yellow-600 rounded-lg hover:bg-yellow-50 transition"
+                  >
+                    Reschedule
+                  </button>
+                  <button 
+                    onClick={() => setConfirmDialog({ isOpen: true, appointmentId: appt._id, action: 'cancel' })} 
+                    className="px-4 py-2 text-sm font-medium border border-red-400 text-red-600 rounded-lg hover:bg-red-50 transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </div>
-
-            <p className="text-sm text-slate-600 mt-4">{appt.notes || appt.description || ''}</p>
-
-            {appt.status !== 'completed' && (
-              <div className="flex gap-3 mt-4">
-                <button onClick={() => setConfirmDialog({ isOpen: true, appointmentId: appt._id, action: 'reschedule' })} className="px-4 py-2 text-sm font-medium border border-yellow-400 text-yellow-600 rounded-lg hover:bg-yellow-50 transition">Reschedule</button>
-                <button onClick={() => setConfirmDialog({ isOpen: true, appointmentId: appt._id, action: 'cancel' })} className="px-4 py-2 text-sm font-medium border border-red-400 text-red-600 rounded-lg hover:bg-red-50 transition">Cancel</button>
-              </div>
-            )}
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Confirm Dialog */}

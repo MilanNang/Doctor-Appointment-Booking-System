@@ -49,82 +49,95 @@ export default function AdminDashboard() {
   };
 
   if (loading) {
-    return <div className="text-center py-8">Loading dashboard...</div>;
+    return <div className="text-center py-20 text-gray-500">Loading dashboard...</div>;
   }
 
   return (
-    <div className="space-y-6">
-      {/* Page Title */}
-      <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          icon={<Stethoscope className="text-blue-600" size={28} />}
-          title="Total Doctors"
-          value={stats.totalDoctors}
-        />
-        <StatCard
-          icon={<Users className="text-green-600" size={28} />}
-          title="Total Patients"
-          value={stats.totalPatients}
-        />
-        <StatCard
-          icon={<CalendarDays className="text-purple-600" size={28} />}
-          title="Appointments Today"
-          value={stats.appointmentsToday}
-        />
-        <StatCard
-          icon={<FileBarChart className="text-orange-600" size={28} />}
-          title="Total Revenue"
-          value={`₹${stats.monthlyRevenue.toLocaleString()}`}
-        />
-      </div>
-
-      {/* Charts and Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Placeholder Chart */}
-        <div className="bg-white shadow rounded-lg p-6 col-span-2">
-          <h2 className="text-lg font-semibold text-gray-700 mb-4">
-            Appointment Trends
-          </h2>
-          <div className="h-64 flex items-center justify-center text-gray-400">
-            📊 Chart Placeholder
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white p-6 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Page Title */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-900">Admin Dashboard</h1>
+          <p className="text-gray-600 mt-2">System overview and statistics</p>
         </div>
 
-        {/* Recent Activity */}
-        <div className="bg-white shadow rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-gray-700 mb-4">
-            Recent Activity
-          </h2>
-          <ul className="space-y-3 text-sm text-gray-600">
-            <li>
-              ✅ New doctor <b>Dr. Smith</b> added
-            </li>
-            <li>
-              📅 Appointment booked by <b>John Doe</b>
-            </li>
-            <li>
-              🧾 Invoice #12345 generated
-            </li>
-            <li>
-              ⚙️ Admin updated system settings
-            </li>
-          </ul>
+        {/* Stats Cards */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatCard
+            icon={<Stethoscope className="text-blue-600" size={28} />}
+            title="Total Doctors"
+            value={stats.totalDoctors}
+            bgColor="bg-blue-50"
+          />
+          <StatCard
+            icon={<Users className="text-green-600" size={28} />}
+            title="Total Patients"
+            value={stats.totalPatients}
+            bgColor="bg-green-50"
+          />
+          <StatCard
+            icon={<CalendarDays className="text-purple-600" size={28} />}
+            title="Today's Appointments"
+            value={stats.appointmentsToday}
+            bgColor="bg-purple-50"
+          />
+          <StatCard
+            icon={<FileBarChart className="text-yellow-600" size={28} />}
+            title="Total Revenue"
+            value={`₹${stats.monthlyRevenue.toLocaleString()}`}
+            bgColor="bg-yellow-50"
+          />
+        </div>
+
+        {/* Charts and Recent Activity */}
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Placeholder Chart */}
+          <div className="card p-8 col-span-2">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              Appointment Trends
+            </h2>
+            <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg text-gray-400">
+              📊 Analytics Chart
+            </div>
+          </div>
+
+          {/* Recent Activity */}
+          <div className="card p-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              Recent Activity
+            </h2>
+            <ul className="space-y-4 text-sm text-gray-600">
+              <li className="flex items-start gap-3 pb-3 border-b border-gray-200">
+                <span className="text-xl">✅</span>
+                <div>New doctor <b>Dr. Smith</b> added</div>
+              </li>
+              <li className="flex items-start gap-3 pb-3 border-b border-gray-200">
+                <span className="text-xl">📅</span>
+                <div>Appointment booked by <b>John Doe</b></div>
+              </li>
+              <li className="flex items-start gap-3 pb-3 border-b border-gray-200">
+                <span className="text-xl">🧾</span>
+                <div>Invoice #12345 generated</div>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="text-xl">⚙️</span>
+                <div>Admin updated system settings</div>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function StatCard({ icon, title, value }) {
+function StatCard({ icon, title, value, bgColor }) {
   return (
-    <div className="bg-white shadow rounded-lg p-6 flex items-center space-x-4">
-      <div className="p-3 rounded-full bg-gray-100">{icon}</div>
+    <div className="card p-6 flex items-center gap-4 hover:shadow-md transition">
+      <div className={`p-4 rounded-lg ${bgColor}`}>{icon}</div>
       <div>
-        <p className="text-gray-500 text-sm">{title}</p>
-        <p className="text-xl font-bold text-gray-800">{value}</p>
+        <p className="text-gray-600 text-sm font-medium">{title}</p>
+        <p className="text-2xl font-bold text-gray-900">{value}</p>
       </div>
     </div>
   );

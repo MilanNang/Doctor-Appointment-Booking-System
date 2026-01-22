@@ -31,102 +31,111 @@ export default function HomePage() {
   };
 
   return (
-    <div className="bg-yellow-50 min-h-screen flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Navbar */}
-      <header className="bg-yellow-50 shadow-sm">
+      <header className="bg-white border-b">
         <div className="container mx-auto flex justify-between items-center py-4 px-6">
-          <h1 className="text-xl font-bold text-yellow-600">
-            Appointment App
-          </h1>
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center text-white font-bold">H</div>
+            <div>
+              <h1 className="text-lg font-bold text-gray-800">Happy Health</h1>
+              <p className="text-xs muted">Care that makes you smile</p>
+            </div>
+          </div>
 
-          <nav className="flex items-center space-x-6">
-            <Link
-              to="/how-it-works"
-              className="text-gray-700 hover:text-yellow-600"
-            >
-              How it works
-            </Link>
-            <Link
-              to="/patient/browse-services"
-              className="text-gray-700 hover:text-yellow-600"
-            >
-              Browse Doctors
-            </Link>
-            <button
-              onClick={handleDoctorClick}
-              className="text-gray-700 hover:text-yellow-600"
-            >
-              Become a Doctor
-            </button>
+          <nav className="hidden md:flex items-center space-x-6 muted text-sm">
+            <Link to="/how-it-works" className="hover:text-gray-800">How it works</Link>
+            <Link to="/patient/browse-services" className="hover:text-gray-800">Browse Doctors</Link>
+            <button onClick={handleDoctorClick} className="hover:text-gray-800">Become a Doctor</button>
           </nav>
 
-          <div className="flex items-center space-x-4">
-            <Link to="/login" className="text-gray-700 hover:text-yellow-600">
-              Sign In
-            </Link>
-            <Link
-              to="/signup"
-              className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg"
-            >
-              Join Now
-            </Link>
+          <div className="flex items-center space-x-3">
+            <Link to="/login" className="text-sm text-gray-700 hover:text-gray-900">Sign in</Link>
+            <Link to="/signup" className="btn-primary text-sm">Join now</Link>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="flex flex-col items-center text-center py-20 bg-yellow-50">
-        <h2 className="text-4xl font-bold text-gray-800 leading-snug">
-          Find the Perfect <span className="text-yellow-600">Doctor</span> <br />
-          for Your Appointment
+      <section className="flex flex-col items-center text-center py-28 px-6 bg-gradient-to-b from-yellow-50 to-white">
+        <h2 className="text-6xl font-bold text-gray-900 leading-tight max-w-3xl">
+          Your Health Journey Starts Here
         </h2>
-        <p className="mt-4 text-gray-600 max-w-xl">
-          Connect with top doctors or offer your expertise to patients
-          worldwide. Built for efficiency, trust, and quality healthcare service.
+        <p className="mt-6 text-gray-600 max-w-2xl text-lg">
+          Book appointments with top doctors instantly. Quality healthcare made simple, accessible, and personal.
         </p>
-        <div className="mt-6 flex gap-4">
+        <div className="mt-10 flex gap-4">
           <button
             onClick={handleBookClick}
-            className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-lg font-medium"
+            className="btn-primary px-8 py-3 text-lg font-semibold"
           >
-            Book Appointment
+            Find Doctors
           </button>
           <button
             onClick={handleDoctorClick}
-            className="border border-yellow-500 text-yellow-600 hover:bg-yellow-100 px-6 py-3 rounded-lg font-medium"
+            className="px-8 py-3 border-2 border-gray-800 rounded-lg text-gray-800 hover:bg-gray-50 font-semibold transition"
           >
-            Offer Service
+            Get Started Free
           </button>
+        </div>
+        
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-20">
+          <div>
+            <p className="text-3xl font-bold text-gray-900">500+</p>
+            <p className="text-gray-600 mt-1">Doctors</p>
+          </div>
+          <div>
+            <p className="text-3xl font-bold text-gray-900">50k+</p>
+            <p className="text-gray-600 mt-1">Patients</p>
+          </div>
+          <div>
+            <p className="text-3xl font-bold text-gray-900">100k+</p>
+            <p className="text-gray-600 mt-1">Appointments</p>
+          </div>
+          <div>
+            <p className="text-3xl font-bold text-yellow-600">4.9</p>
+            <p className="text-gray-600 mt-1">Rating</p>
+          </div>
         </div>
       </section>
 
       {/* Explore Services Section */}
-      <section className="bg-white py-16 px-6">
-        <div className="max-w-6xl mx-auto text-center">
-          <h3 className="text-3xl font-bold text-gray-800 mb-10">
-            Explore Services
+      <section className="py-20 px-6 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <h3 className="text-4xl font-bold text-center text-gray-900 mb-4">
+            Browse by Specialization
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
+          <p className="text-center text-gray-600 mb-12">
+            Find the right specialist for your healthcare needs
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {[
-              { name: "General Physicians", img: gen },
-              { name: "Dentists", img: dent },
-              { name: "Dermatologists", img: den },
-              { name: "Neurologists", img: Neurologists },
-              { name: "Pediatricians", img: Pediatrics },
-              { name: "Cardiologists", img: Cardiologists },
+              { name: "General Physicians", count: "45", img: gen },
+              { name: "Dentists", count: "38", img: dent },
+              { name: "Dermatologists", count: "32", img: den },
+              { name: "Neurologists", count: "28", img: Neurologists },
+              { name: "Pediatricians", count: "42", img: Pediatrics },
+              { name: "Cardiologists", count: "35", img: Cardiologists },
             ].map((service, idx) => (
               <div
                 key={idx}
-                className="bg-yellow-50 rounded-xl shadow-md hover:shadow-lg transition overflow-hidden"
+                className="card rounded-lg overflow-hidden hover:shadow-xl transition-all cursor-pointer group"
               >
-                <img
-                  src={service.img}
-                  alt={service.name}
-                  className="h-40 w-full object-cover"
-                />
-                <h4 className="text-lg font-semibold text-gray-700 py-3">
-                  {service.name}
-                </h4>
+                <div className="relative overflow-hidden h-40">
+                  <img
+                    src={service.img}
+                    alt={service.name}
+                    className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition"></div>
+                </div>
+                <div className="p-4">
+                  <h4 className="text-base font-semibold text-gray-800">
+                    {service.name}
+                  </h4>
+                  <p className="text-sm text-gray-600 mt-1">{service.count} doctors</p>
+                </div>
               </div>
             ))}
           </div>
@@ -134,37 +143,40 @@ export default function HomePage() {
       </section>
 
       {/* How It Works Section */}
-      <section className="py-16 bg-yellow-100">
-        <div className="max-w-6xl mx-auto px-6 text-center">
-          <h3 className="text-3xl font-bold text-gray-800 mb-10">
+      <section className="py-20 bg-gradient-to-b from-gray-50 to-white px-6">
+        <div className="max-w-6xl mx-auto">
+          <h3 className="text-4xl font-bold text-center text-gray-900 mb-4">
             How It Works
           </h3>
+          <p className="text-center text-gray-600 mb-12">
+            Book your appointment in three simple steps
+          </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white p-6 rounded-2xl shadow hover:shadow-lg transition">
-              <h4 className="text-xl font-semibold text-yellow-600 mb-2">
-                1. Register
+            <div className="card p-8 text-center hover:shadow-lg transition">
+              <div className="w-16 h-16 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center font-bold text-2xl mb-6 mx-auto">1</div>
+              <h4 className="text-xl font-semibold text-gray-800 mb-3">
+                Search Doctor
               </h4>
               <p className="text-gray-600">
-                Sign up as a patient or doctor to start using our appointment
-                system.
+                Browse our extensive list of qualified healthcare professionals
               </p>
             </div>
-            <div className="bg-white p-6 rounded-2xl shadow hover:shadow-lg transition">
-              <h4 className="text-xl font-semibold text-yellow-600 mb-2">
-                2. Book or Offer Services
+            <div className="card p-8 text-center hover:shadow-lg transition">
+              <div className="w-16 h-16 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center font-bold text-2xl mb-6 mx-auto">2</div>
+              <h4 className="text-xl font-semibold text-gray-800 mb-3">
+                Check Availability
               </h4>
               <p className="text-gray-600">
-                Patients can book appointments, and doctors can offer their
-                medical expertise.
+                View doctor schedules and find the perfect time slot for you
               </p>
             </div>
-            <div className="bg-white p-6 rounded-2xl shadow hover:shadow-lg transition">
-              <h4 className="text-xl font-semibold text-yellow-600 mb-2">
-                3. Attend Appointment
+            <div className="card p-8 text-center hover:shadow-lg transition">
+              <div className="w-16 h-16 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center font-bold text-2xl mb-6 mx-auto">3</div>
+              <h4 className="text-xl font-semibold text-gray-800 mb-3">
+                Book Appointment
               </h4>
               <p className="text-gray-600">
-                Join your scheduled appointment and get the best healthcare
-                support.
+                Confirm your appointment with just a few clicks
               </p>
             </div>
           </div>
@@ -172,22 +184,20 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-yellow-600 text-white py-8 mt-auto">
-        <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center">
-          <h4 className="text-lg font-bold">Appointment App</h4>
-          <p className="text-sm mt-2 md:mt-0">
-            © {new Date().getFullYear()} All rights reserved.
-          </p>
-          <div className="flex space-x-4 mt-2 md:mt-0">
-            <Link to="/privacy" className="hover:underline">
-              Privacy Policy
-            </Link>
-            <Link to="/terms" className="hover:underline">
-              Terms
-            </Link>
-            <Link to="/contact" className="hover:underline">
-              Contact
-            </Link>
+      <footer className="bg-gray-900 text-gray-300 py-10 mt-auto">
+        <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-yellow-500 flex items-center justify-center text-white font-bold text-sm">H</div>
+            <div>
+              <h4 className="text-sm font-bold text-white">Happy Health</h4>
+              <p className="text-xs">Care that makes you smile</p>
+            </div>
+          </div>
+          <p className="text-xs">© {new Date().getFullYear()} All rights reserved.</p>
+          <div className="flex space-x-4 text-xs">
+            <Link to="/privacy" className="hover:text-white">Privacy</Link>
+            <Link to="/terms" className="hover:text-white">Terms</Link>
+            <Link to="/contact" className="hover:text-white">Contact</Link>
           </div>
         </div>
       </footer>

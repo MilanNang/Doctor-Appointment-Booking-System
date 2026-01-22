@@ -10,6 +10,8 @@ import ToastContainer from "./Componet/ToastContainer";
 import Home from "./pages/Home";
 import Login from './pages/Auth/Login';
 import Signup from './pages/Auth/Signup';
+import HowItWorks from './pages/HowItWorks';
+import PublicDoctorProfile from './pages/DoctorProfile';
 
 // Doctor imports
 import DoctorLayout from "./Layouts/DoctorLayout";
@@ -26,6 +28,7 @@ import PatientDashboard from "./pages/Patient/Dashboard";
 import BrowseServices from "./pages/Patient/Browse";
 import MyBookings from "./pages/Patient/Booking";
 import PatientCalendar from "./pages/Patient/Calender";
+import PatientProfile from "./pages/Patient/Profile";
 
 // Admin imports
  import AdminLayout from "./Layouts/AdminLayout";
@@ -60,6 +63,8 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/how-it-works" element={<HowItWorks />} />
+        <Route path="/doctor/:id" element={<PublicDoctorProfile />} />
         {/* Doctor side */}
         <Route path="/doctor" element={<ProtectedRoute requiredRole="doctor"><DoctorLayout /></ProtectedRoute>}>
           <Route index element={<DoctorDashboard />} />
@@ -72,6 +77,7 @@ function App() {
         {/* Patient side */}
         <Route path="/patient" element={<ProtectedRoute requiredRole="patient"><PatientLayout /></ProtectedRoute>}>
           <Route index element={<PatientDashboard />} />
+          <Route path="profile" element={<PatientProfile />} />
           <Route path="browse-services" element={<BrowseServices />} />
           <Route path="appointments" element={<MyBookings />} />
           <Route path="calendar/:id" element={<PatientCalendar />} />
