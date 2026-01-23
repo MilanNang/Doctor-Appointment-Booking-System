@@ -10,7 +10,8 @@ import {
   CalendarDays,
   CreditCard,
   Settings,
-  FileText
+  FileText,
+  UserCheck
 } from "lucide-react";
 import { LogOut } from "lucide-react";
 
@@ -40,6 +41,7 @@ export default function AdminSidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-4 py-6 space-y-2">
         <SidebarLink to="/admin" icon={<LayoutDashboard size={20} />} label="Dashboard" />
+        <SidebarLink to="/admin/doctor-approval" icon={<UserCheck size={20} />} label="Doctor Approval" />
         <SidebarLink to="/admin/doctors" icon={<Stethoscope size={20} />} label="Doctors" />
         <SidebarLink to="/admin/patients" icon={<Users size={20} />} label="Patients" />
         <SidebarLink to="/admin/appointments" icon={<CalendarDays size={20} />} label="Appointments" />

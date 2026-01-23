@@ -6,10 +6,40 @@ const doctorSchema = new mongoose.Schema({
     ref: "User",
     required: true,
   },
+  // Professional Details
+  medicalQualification: {
+    type: String,
+    default: "",
+  },
   specialization: {
     type: String,
     default: "",
   },
+  medicalRegistrationId: {
+    type: String,
+    default: "",
+  },
+  yearsOfExperience: {
+    type: Number,
+    default: 0,
+  },
+  hospitalClinicName: {
+    type: String,
+    default: "",
+  },
+  hospitalClinicAddress: {
+    type: String,
+    default: "",
+  },
+  consultationFeesOnline: {
+    type: Number,
+    default: 0,
+  },
+  consultationFeesOffline: {
+    type: Number,
+    default: 0,
+  },
+  // Legacy fields (for backward compatibility)
   experience: {
     type: Number,
     default: 0,
@@ -33,6 +63,12 @@ const doctorSchema = new mongoose.Schema({
   availability: {
     type: Object,
     default: {},
+  },
+  // Approval status
+  status: {
+    type: String,
+    enum: ["pending", "approved", "rejected"],
+    default: "pending",
   },
   createdAt: {
     type: Date,

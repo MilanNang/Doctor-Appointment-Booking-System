@@ -24,6 +24,16 @@ export default function Login() {
     try {
       const { data } = await API.post("/auth/login", { email, password });
 
+      // Check if password reset is required
+      if (data.mustResetPassword) {
+        dispatch(showToast({ 
+          message: "Please reset your password to continue", 
+          type: "warning" 
+        }));
+        navigate("/reset-password", { state: { email: email } });
+        return;
+      }
+
       // Save user data in Redux
       dispatch(loginSuccess(data));
       dispatch(showToast({ message: "Login successful! Redirecting...", type: "success" }));
@@ -31,7 +41,12 @@ export default function Login() {
       // Navigate based on actual role from database
       if (data.role === "doctor") {
         dispatch(setDoctorProfile(data));
-        navigate("/doctor");
+        // Redirect to profile page if first login after approval
+        if (data.isFirstLogin) {
+          navigate("/doctor/profile");
+        } else {
+          navigate("/doctor");
+        }
       } else if (data.role === "patient") {
         dispatch(setPatientData(data));
         navigate("/patient/browse-services");

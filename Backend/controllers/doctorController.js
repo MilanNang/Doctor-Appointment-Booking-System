@@ -20,19 +20,78 @@ export const createOrUpdateDoctor = async (req, res) => {
       return res.status(401).json({ error: "Unauthorized: No user" });
     }
 
-    const { specialization, experience, fees, availability, about, location } = req.body;
+    // Get User model to update personal info
+    const User = (await import("../models/User.js")).default;
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Extract all fields from request body
+    const {
+      // Personal Information
+      fullName,
+      mobileNumber,
+      address,
+      
+      // Professional Information
+      medicalQualification,
+      specialization,
+      yearsOfExperience,
+      hospitalClinicName,
+      hospitalClinicAddress,
+      consultationFeesOnline,
+      consultationFeesOffline,
+      
+      // Legacy fields (for backward compatibility)
+      experience,
+      fees,
+      availability,
+      about,
+      location,
+    } = req.body;
 
     let doctor = await Doctor.findOne({ user: req.user._id });
 
     if (doctor) {
-      // Update existing
+      // Update existing doctor profile
       console.log("📝 Updating existing doctor");
       
-      if (specialization) doctor.specialization = typeof specialization === 'string' ? specialization.trim() : specialization;
-      if (experience) doctor.experience = Number(experience);
-      if (fees) doctor.fees = Number(fees);
-      if (about) doctor.about = about;
-      if (location) doctor.location = location;
+      // Update personal information in User model
+      if (fullName) user.name = fullName.trim();
+      if (mobileNumber !== undefined) user.mobileNumber = mobileNumber.trim();
+      if (address !== undefined) user.residentialAddress = address.trim();
+      await user.save();
+
+      // Update professional information in Doctor model
+      if (medicalQualification !== undefined) doctor.medicalQualification = medicalQualification.trim();
+      if (specialization !== undefined) doctor.specialization = typeof specialization === 'string' ? specialization.trim() : specialization;
+      if (yearsOfExperience !== undefined) {
+        doctor.yearsOfExperience = Number(yearsOfExperience);
+        doctor.experience = Number(yearsOfExperience); // Legacy field
+      }
+      if (hospitalClinicName !== undefined) doctor.hospitalClinicName = hospitalClinicName.trim();
+      if (hospitalClinicAddress !== undefined) doctor.hospitalClinicAddress = hospitalClinicAddress.trim();
+      if (consultationFeesOnline !== undefined) doctor.consultationFeesOnline = Number(consultationFeesOnline);
+      if (consultationFeesOffline !== undefined) {
+        doctor.consultationFeesOffline = Number(consultationFeesOffline);
+        doctor.fees = Number(consultationFeesOffline); // Legacy field
+      }
+      
+      // Legacy fields
+      if (experience !== undefined) {
+        doctor.experience = Number(experience);
+        doctor.yearsOfExperience = Number(experience);
+      }
+      if (fees !== undefined) {
+        doctor.fees = Number(fees);
+        doctor.consultationFeesOffline = Number(fees);
+      }
+      if (about !== undefined) doctor.about = about;
+      if (location !== undefined) {
+        doctor.location = location;
+        if (!doctor.hospitalClinicAddress) doctor.hospitalClinicAddress = location;
+      }
       
       if (availability) {
         try {
@@ -58,18 +117,58 @@ export const createOrUpdateDoctor = async (req, res) => {
 
       const savedDoctor = await doctor.save();
       console.log("✅ Doctor profile saved");
-      return res.json({ message: "Doctor profile updated", doctor: savedDoctor });
+      
+      // Audit log: Profile updated
+      console.log(`[AUDIT] Doctor profile updated - User ID: ${req.user._id}, Doctor ID: ${savedDoctor._id}, Timestamp: ${new Date().toISOString()}`);
+      
+      // Return combined profile data
+      const profileData = {
+        fullName: user.name,
+        email: user.email,
+        age: user.age || "",
+        mobileNumber: user.mobileNumber || "",
+        address: user.residentialAddress || "",
+        medicalQualification: savedDoctor.medicalQualification || "",
+        specialization: savedDoctor.specialization || "",
+        medicalRegistrationId: savedDoctor.medicalRegistrationId || "",
+        yearsOfExperience: savedDoctor.yearsOfExperience || 0,
+        hospitalClinicName: savedDoctor.hospitalClinicName || "",
+        hospitalClinicAddress: savedDoctor.hospitalClinicAddress || "",
+        consultationFeesOnline: savedDoctor.consultationFeesOnline || 0,
+        consultationFeesOffline: savedDoctor.consultationFeesOffline || 0,
+        profileImage: savedDoctor.profileImage || "",
+        status: savedDoctor.status || "pending",
+        experience: savedDoctor.experience || savedDoctor.yearsOfExperience || 0,
+        fees: savedDoctor.fees || savedDoctor.consultationFeesOffline || 0,
+        about: savedDoctor.about || "",
+        location: savedDoctor.location || savedDoctor.hospitalClinicAddress || "",
+        availability: savedDoctor.availability || {},
+      };
+      
+      return res.json({ message: "Doctor profile updated", doctor: profileData });
     } else {
-      // Create new
+      // Create new doctor profile
       console.log("➕ Creating new doctor profile");
+      
+      // Update user personal info if provided
+      if (fullName) user.name = fullName.trim();
+      if (mobileNumber !== undefined) user.mobileNumber = mobileNumber.trim();
+      if (address !== undefined) user.residentialAddress = address.trim();
+      await user.save();
       
       doctor = new Doctor({
         user: req.user._id,
+        medicalQualification: medicalQualification ? medicalQualification.trim() : "",
         specialization: typeof specialization === 'string' ? specialization.trim() : (specialization || ""),
-        experience: Number(experience) || 0,
-        fees: Number(fees) || 0,
+        yearsOfExperience: yearsOfExperience ? Number(yearsOfExperience) : (experience ? Number(experience) : 0),
+        hospitalClinicName: hospitalClinicName ? hospitalClinicName.trim() : "",
+        hospitalClinicAddress: hospitalClinicAddress ? hospitalClinicAddress.trim() : "",
+        consultationFeesOnline: consultationFeesOnline ? Number(consultationFeesOnline) : 0,
+        consultationFeesOffline: consultationFeesOffline ? Number(consultationFeesOffline) : (fees ? Number(fees) : 0),
+        experience: experience ? Number(experience) : (yearsOfExperience ? Number(yearsOfExperience) : 0),
+        fees: fees ? Number(fees) : (consultationFeesOffline ? Number(consultationFeesOffline) : 0),
         about: about || "",
-        location: location || "",
+        location: location || (hospitalClinicAddress ? hospitalClinicAddress.trim() : ""),
         availability: {},
       });
 
@@ -96,7 +195,35 @@ export const createOrUpdateDoctor = async (req, res) => {
 
       const savedDoctor = await doctor.save();
       console.log("✅ Doctor profile created");
-      return res.json({ message: "Doctor profile created", doctor: savedDoctor });
+      
+      // Audit log: Profile created
+      console.log(`[AUDIT] Doctor profile created - User ID: ${req.user._id}, Doctor ID: ${savedDoctor._id}, Timestamp: ${new Date().toISOString()}`);
+      
+      // Return combined profile data
+      const profileData = {
+        fullName: user.name,
+        email: user.email,
+        age: user.age || "",
+        mobileNumber: user.mobileNumber || "",
+        address: user.residentialAddress || "",
+        medicalQualification: savedDoctor.medicalQualification || "",
+        specialization: savedDoctor.specialization || "",
+        medicalRegistrationId: savedDoctor.medicalRegistrationId || "",
+        yearsOfExperience: savedDoctor.yearsOfExperience || 0,
+        hospitalClinicName: savedDoctor.hospitalClinicName || "",
+        hospitalClinicAddress: savedDoctor.hospitalClinicAddress || "",
+        consultationFeesOnline: savedDoctor.consultationFeesOnline || 0,
+        consultationFeesOffline: savedDoctor.consultationFeesOffline || 0,
+        profileImage: savedDoctor.profileImage || "",
+        status: savedDoctor.status || "pending",
+        experience: savedDoctor.experience || savedDoctor.yearsOfExperience || 0,
+        fees: savedDoctor.fees || savedDoctor.consultationFeesOffline || 0,
+        about: savedDoctor.about || "",
+        location: savedDoctor.location || savedDoctor.hospitalClinicAddress || "",
+        availability: savedDoctor.availability || {},
+      };
+      
+      return res.json({ message: "Doctor profile created", doctor: profileData });
     }
   } catch (error) {
     console.error("❌ Error in createOrUpdateDoctor:", error);
@@ -223,8 +350,18 @@ export const getDoctorDashboard = async (req, res) => {
 // Get all approved doctors
 export const getAllDoctors = async (req, res) => {
   try {
-    const doctors = await Doctor.find().populate("user", "name email");
-    res.json(doctors);
+    // Only return approved doctors with approved users
+    const doctors = await Doctor.find({ status: "approved" })
+      .populate({
+        path: "user",
+        match: { isApproved: true, isVerified: true },
+        select: "name email"
+      });
+    
+    // Filter out doctors where user is null (not approved)
+    const approvedDoctors = doctors.filter(doc => doc.user !== null);
+    
+    res.json(approvedDoctors);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -238,6 +375,55 @@ export const getDoctorById = async (req, res) => {
     res.json(doctor);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+// Get complete doctor profile (for profile page)
+export const getDoctorProfile = async (req, res) => {
+  try {
+    const doctor = await Doctor.findOne({ user: req.user._id }).populate("user", "name email age mobileNumber residentialAddress");
+    
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor profile not found" });
+    }
+
+    // Combine User and Doctor data
+    const profileData = {
+      // Personal Information (from User)
+      fullName: doctor.user.name,
+      email: doctor.user.email,
+      age: doctor.user.age || "",
+      mobileNumber: doctor.user.mobileNumber || "",
+      address: doctor.user.residentialAddress || "",
+      
+      // Professional Information (from Doctor)
+      medicalQualification: doctor.medicalQualification || "",
+      specialization: doctor.specialization || "",
+      medicalRegistrationId: doctor.medicalRegistrationId || "",
+      yearsOfExperience: doctor.yearsOfExperience || 0,
+      hospitalClinicName: doctor.hospitalClinicName || "",
+      hospitalClinicAddress: doctor.hospitalClinicAddress || "",
+      consultationFeesOnline: doctor.consultationFeesOnline || 0,
+      consultationFeesOffline: doctor.consultationFeesOffline || 0,
+      
+      // Profile Image
+      profileImage: doctor.profileImage || "",
+      
+      // Status
+      status: doctor.status || "pending",
+      
+      // Legacy fields for backward compatibility
+      experience: doctor.experience || doctor.yearsOfExperience || 0,
+      fees: doctor.fees || doctor.consultationFeesOffline || 0,
+      about: doctor.about || "",
+      location: doctor.location || doctor.hospitalClinicAddress || "",
+      availability: doctor.availability || {},
+    };
+
+    res.json(profileData);
+  } catch (error) {
+    console.error("Error in getDoctorProfile:", error);
+    res.status(500).json({ error: error.message || "Failed to fetch doctor profile" });
   }
 };
 

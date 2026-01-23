@@ -12,8 +12,13 @@ export const bookAppointment = async (req, res) => {
     console.log("📅 Booking appointment:", { doctorId, date, time, userId: req.user?._id });
 
     // 🩻 Find doctor + linked user
-    const doctor = await Doctor.findById(doctorId).populate("user", "name email");
+    const doctor = await Doctor.findById(doctorId).populate("user", "name email isApproved");
     if (!doctor) return res.status(404).json({ message: "Doctor not found" });
+
+    // Check if doctor is approved
+    if (doctor.status !== "approved" || !doctor.user || !doctor.user.isApproved) {
+      return res.status(403).json({ message: "This doctor is not approved to accept appointments yet" });
+    }
 
     // 🧍 Find patient
     const patient = await User.findById(req.user._id);

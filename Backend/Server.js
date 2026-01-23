@@ -13,6 +13,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 import appointmentRoutes from "./routes/appointmentRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import doctorRegistrationRoutes from "./routes/doctorRegistrationRoutes.js";
 
 dotenv.config();
 
@@ -37,6 +38,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/doctor-registration", doctorRegistrationRoutes);
 
 // Database connection with timeout settings
 mongoose.connect(process.env.MONGO_URI, {

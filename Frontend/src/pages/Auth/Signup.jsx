@@ -4,14 +4,12 @@ import { useDispatch } from "react-redux";
 import { showToast } from "../../Redux/toastSlice";
 import API from "../util/api";
 import { loginSuccess } from "../../Redux/authSlice";
-import { setDoctorProfile } from "../../Redux/doctorSlice";
 import { setPatientData } from "../../Redux/patientSlice";
 import { Link } from "react-router-dom";
 
 
 export default function Signup() {
   const [stage, setStage] = useState("signup"); // signup | verify
-  const [role, setRole] = useState("patient");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,13 +22,14 @@ export default function Signup() {
   const navigate = useNavigate();
 
   const handleSignup = async () => {
+    // For patients, continue with normal registration
     if (password !== confirmPassword) {
       dispatch(showToast({ message: "Passwords do not match!", type: "error" }));
       return;
     }
 
     try {
-      await API.post("/auth/register", { name, email, password, role });
+      await API.post("/auth/register", { name, email, password, role: "patient" });
       setStage("verify");
     } catch (err) {
       dispatch(showToast({ message: err.response?.data?.message || "Signup failed", type: "error" }));
@@ -44,14 +43,9 @@ export default function Signup() {
       // Save user in Redux
       dispatch(loginSuccess({ user: res.data, token: res.data.token }));
 
-      // Set doctor or patient slice
-      if (role === "doctor") {
-        dispatch(setDoctorProfile(res.data));
-        navigate("/doctor");
-      } else {
-        dispatch(setPatientData(res.data));
-        navigate("/patient/browse-services");
-      }
+      // Navigate to patient dashboard
+      dispatch(setPatientData(res.data));
+      navigate("/patient/browse-services");
     } catch (err) {
       dispatch(showToast({ message: err.response?.data?.message || "Verification failed", type: "error" }));
     }
@@ -91,31 +85,7 @@ export default function Signup() {
         <div className="text-center mb-8">
           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-600 mx-auto mb-3 flex items-center justify-center text-white font-bold text-lg">H</div>
           <h1 className="text-2xl font-bold text-gray-800">Join Happy Health</h1>
-          <p className="muted text-sm mt-1">Create your account to get started</p>
-        </div>
-
-        {/* Role Selector */}
-        <div className="flex mb-6 bg-gray-100 rounded-md p-1">
-          <button
-            onClick={() => setRole("doctor")}
-            className={`flex-1 py-2 rounded text-sm font-medium ${
-              role === "doctor"
-                ? "text-white bg-yellow-500"
-                : "text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Doctor
-          </button>
-          <button
-            onClick={() => setRole("patient")}
-            className={`flex-1 py-2 rounded text-sm font-medium ${
-              role === "patient"
-                ? "text-white bg-blue-500"
-                : "text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Patient
-          </button>
+          <p className="muted text-sm mt-1">Create your patient account to get started</p>
         </div>
 
         {/* Name */}
@@ -165,20 +135,29 @@ export default function Signup() {
         </div>
 
         <button
-          className={`w-full py-2.5 rounded-md font-semibold text-white transition ${
-            role === "patient" ? "bg-blue-500 hover:bg-blue-600" : "bg-yellow-500 hover:bg-yellow-600"
-          }`}
+          className="w-full py-2.5 rounded-md font-semibold text-white bg-blue-500 hover:bg-blue-600 transition"
           onClick={handleSignup}
         >
           Create Account
         </button>
 
-        <p className="mt-4 text-sm text-center muted">
-          Already have an account?{" "}
-          <Link to="/login" className="text-yellow-600 font-medium hover:text-yellow-700">
-            Sign in
-          </Link>
-        </p>
+        <div className="mt-4 space-y-2">
+          <p className="text-sm text-center muted">
+            Already have an account?{" "}
+            <Link to="/login" className="text-yellow-600 font-medium hover:text-yellow-700">
+              Sign in
+            </Link>
+          </p>
+          <div className="text-center">
+            <span className="text-sm text-gray-600">Are you a doctor? </span>
+            <Link 
+              to="/doctor-registration/step1" 
+              className="text-sm text-yellow-600 font-medium hover:text-yellow-700 hover:underline"
+            >
+              Become a Doctor
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

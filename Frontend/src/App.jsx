@@ -10,6 +10,10 @@ import ToastContainer from "./Componet/ToastContainer";
 import Home from "./pages/Home";
 import Login from './pages/Auth/Login';
 import Signup from './pages/Auth/Signup';
+import DoctorRegistrationStep1 from './pages/Auth/DoctorRegistrationStep1';
+import DoctorRegistrationStep2 from './pages/Auth/DoctorRegistrationStep2';
+import DoctorRegistrationConfirmation from './pages/Auth/DoctorRegistrationConfirmation';
+import ResetPassword from './pages/Auth/ResetPassword';
 import HowItWorks from './pages/HowItWorks';
 import PublicDoctorProfile from './pages/DoctorProfile';
 
@@ -30,12 +34,13 @@ import MyBookings from "./pages/Patient/Booking";
 import PatientCalendar from "./pages/Patient/Calender";
 import PatientProfile from "./pages/Patient/Profile";
 
-// Admin imports
+ // Admin imports
  import AdminLayout from "./Layouts/AdminLayout";
  import AdminDashboard from "./pages/Admin/Dashboard";
  import ManageDoctors from "./pages/Admin/ManageDoctors";
  import ManagePatients from "./pages/Admin/ManagePatients";
  import ManageAppointments from "./pages/Admin/ManageAppointments";
+ import DoctorApproval from "./pages/Admin/DoctorApproval";
  import Reports from "./pages/Admin/Reports";
  import Settings from "./pages/Admin/Seting";
  import Payments from "./pages/Admin/Payments";
@@ -63,6 +68,10 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/doctor-registration/step1" element={<DoctorRegistrationStep1 />} />
+        <Route path="/doctor-registration/step2" element={<DoctorRegistrationStep2 />} />
+        <Route path="/doctor-registration/confirmation" element={<DoctorRegistrationConfirmation />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/how-it-works" element={<HowItWorks />} />
         <Route path="/doctor/:id" element={<PublicDoctorProfile />} />
         {/* Doctor side */}
@@ -87,6 +96,7 @@ function App() {
          <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminLayout /></ProtectedRoute>}>
           <Route index element={<AdminDashboard />} />
           <Route path="doctors" element={<ManageDoctors />} />
+          <Route path="doctor-approval" element={<DoctorApproval />} />
           <Route path="patients" element={<ManagePatients />} />
           <Route path="appointments" element={<ManageAppointments />} />
           <Route path="report" element={<Reports />} />

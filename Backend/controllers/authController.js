@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import generateToken from "../utils/generateToken.js";
 import { sendEmail } from "../utils/sendEmail.js";
+import bcrypt from "bcryptjs";
 
 const pendingUsers = {}; // In-memory store: { email: { name, password, role, code } }
 
@@ -88,11 +89,37 @@ export const loginUser = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(401).json({ message: "User not found" });
 
-    const isMatch = await user.matchPassword(password);
+    // Check password match (including temporary password)
+    let isMatch = await user.matchPassword(password);
+    
+    // If regular password doesn't match, check temporary password
+    if (!isMatch && user.tempPassword) {
+      isMatch = await bcrypt.compare(password, user.tempPassword);
+    }
+
     if (!isMatch) return res.status(401).json({ message: "Invalid email or password" });
 
     if (!user.isVerified) {
       return res.status(401).json({ message: "Please verify your email before logging in." });
+    }
+
+    // Check doctor approval status
+    if (user.role === "doctor" && !user.isApproved) {
+      return res.status(403).json({ 
+        message: "Your account is pending approval. Please wait for admin approval." 
+      });
+    }
+
+    // If user must reset password, return flag
+    if (user.mustResetPassword) {
+      return res.status(200).json({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        mustResetPassword: true,
+        message: "Please reset your password to continue",
+      });
     }
 
     // Set httpOnly cookie with token
@@ -103,12 +130,17 @@ export const loginUser = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
+    // Check if this is first login after approval (for doctors)
+    const isFirstLogin = user.role === "doctor" && user.isFirstLogin === true;
+    
     res.json({
       _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
       token: generateToken(user._id, user.role),
+      mustResetPassword: false,
+      isFirstLogin: isFirstLogin,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -144,6 +176,80 @@ export const verifyAuth = async (req, res) => {
 };
 
 // =======================
+// @desc   Reset password (for first login with temporary password)
+// @route  POST /api/auth/reset-password
+// @access Public (but requires email and temp password verification)
+// =======================
+export const resetPassword = async (req, res) => {
+  try {
+    const { email, currentPassword, newPassword } = req.body;
+
+    if (!email || !currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Email, current password, and new password are required" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "New password must be at least 6 characters" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Verify current password (can be regular or temporary)
+    let isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch && user.tempPassword) {
+      isMatch = await bcrypt.compare(currentPassword, user.tempPassword);
+    }
+
+    if (!isMatch) {
+      return res.status(401).json({ message: "Current password is incorrect" });
+    }
+
+    // Update password
+    user.password = newPassword; // Will be hashed by pre-save hook
+    user.mustResetPassword = false;
+    user.tempPassword = undefined; // Clear temporary password
+    // Set first login flag for doctors (to redirect to profile setup)
+    if (user.role === "doctor") {
+      user.isFirstLogin = true;
+    }
+
+    await user.save();
+
+    // Generate new token
+    const token = generateToken(user._id, user.role);
+
+    // Set httpOnly cookie with token
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    // Set first login flag for doctors (to redirect to profile setup)
+    const isFirstLogin = user.role === "doctor" && !user.isFirstLogin;
+    if (user.role === "doctor" && !user.isFirstLogin) {
+      user.isFirstLogin = true;
+      await user.save();
+    }
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      token: token,
+      message: "Password reset successfully",
+      isFirstLogin: isFirstLogin,
+    });
+  } catch (error) {
+    console.error("Error in resetPassword:", error);
+    res.status(500).json({ message: error.message || "Failed to reset password" });
+  }
+};
+
+// =======================
 // @desc   Update logged-in user's profile
 // @route  PUT /api/auth/profile
 // @access Private
@@ -175,6 +281,27 @@ export const updateProfile = async (req, res) => {
       role: updated.role,
       token: generateToken(updated._id, updated.role),
     });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// =======================
+// @desc   Clear first login flag (after profile setup)
+// @route  POST /api/auth/clear-first-login
+// @access Private
+// =======================
+export const clearFirstLogin = async (req, res) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: "Not authenticated" });
+
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    user.isFirstLogin = false;
+    await user.save();
+
+    res.json({ message: "First login flag cleared", isFirstLogin: false });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

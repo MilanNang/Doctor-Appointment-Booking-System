@@ -5,8 +5,8 @@ import {
   getAllDoctors,
   getDoctorById,
   updateAvailability,
-  getDoctorDashboard
-
+  getDoctorDashboard,
+  getDoctorProfile
 } from "../controllers/doctorController.js";
 import { protect, doctorOnly } from "../middleware/authMiddleware.js";
 import { upload } from "../utils/multer.js";
@@ -49,6 +49,9 @@ router.get("/me", protect, doctorOnly, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+// Get complete doctor profile (with User data combined)
+router.get("/profile", protect, doctorOnly, getDoctorProfile);
 
 // must come after /me and /dashboard
 router.get("/:id", getDoctorById);
