@@ -6,6 +6,7 @@ import API from "./pages/util/api";
 import { loginSuccess } from "./Redux/authSlice";
 import ProtectedRoute from "./Components/ProtectedRoute";
 import ToastContainer from "./Componet/ToastContainer";
+import { initializeSocket, disconnectSocket } from "./utils/socket";
 
 import Home from "./pages/Home";
 import Login from './pages/Auth/Login';
@@ -59,6 +60,14 @@ function App() {
       }
     };
     checkAuth();
+
+    // 🔴 NEW: Initialize Socket.io connection
+    initializeSocket();
+
+    // Cleanup on unmount
+    return () => {
+      disconnectSocket();
+    };
   }, [dispatch]);
 
   return (

@@ -15,8 +15,7 @@ const doctorRegistrationRequestSchema = new mongoose.Schema({
   yearsOfExperience: { type: Number, default: 0 },
   hospitalClinicName: { type: String, default: "" },
   hospitalClinicAddress: { type: String, default: "" },
-  consultationFeesOnline: { type: Number, default: 0 },
-  consultationFeesOffline: { type: Number, default: 0 },
+  fees: { type: Number, default: 0 },
   
   // Status and metadata
   status: { 

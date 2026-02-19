@@ -5,6 +5,39 @@ import { setDoctorProfile } from "../../Redux/doctorSlice";
 import { showToast } from "../../Redux/toastSlice";
 import { useNavigate } from "react-router-dom";
 
+const specializations = [
+  "Cardiologists",
+  "Pediatricians",
+  "Neurologists",
+  "Dermatologists",
+  "Dentists",
+  "General Physicians"
+];
+
+const qualifications = [
+  "MBBS", "BDS", "MD", "MS", "Other"
+];
+
+// Calculate profile completion percentage
+const calculateCompletion = (profileData) => {
+  const fields = [
+    profileData.fullName,
+    profileData.email,
+    profileData.mobileNumber,
+    profileData.address,
+    (profileData.medicalQualification === 'Other' ? profileData.otherQualification : profileData.medicalQualification),
+    profileData.specialization,
+    profileData.medicalRegistrationId,
+    profileData.yearsOfExperience,
+    profileData.hospitalClinicName,
+    profileData.hospitalClinicAddress,
+    profileData.fees,
+    profileData.profileImage,
+  ];
+  const filledFields = fields.filter(field => field && field !== "" && field !== 0).length;
+  return Math.round((filledFields / fields.length) * 100);
+};
+
 export default function DoctorProfile() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -24,14 +57,14 @@ export default function DoctorProfile() {
     address: "",
     
     // Professional Information
-    medicalQualification: "",
-    specialization: "",
+    medicalQualification: "MBBS",
+    otherQualification: "",
+    specialization: "General Physicians",
     medicalRegistrationId: "",
     yearsOfExperience: "",
     hospitalClinicName: "",
     hospitalClinicAddress: "",
-    consultationFeesOnline: "",
-    consultationFeesOffline: "",
+    fees: "",
     
     // Profile Image
     profileImage: "",
@@ -43,26 +76,6 @@ export default function DoctorProfile() {
   const [previewImage, setPreviewImage] = useState("");
   const [profileCompletion, setProfileCompletion] = useState(0);
 
-  // Calculate profile completion percentage
-  const calculateCompletion = (profileData) => {
-    const fields = [
-      profileData.fullName,
-      profileData.email,
-      profileData.mobileNumber,
-      profileData.address,
-      profileData.medicalQualification,
-      profileData.specialization,
-      profileData.medicalRegistrationId,
-      profileData.yearsOfExperience,
-      profileData.hospitalClinicName,
-      profileData.hospitalClinicAddress,
-      profileData.consultationFeesOnline,
-      profileData.consultationFeesOffline,
-      profileData.profileImage,
-    ];
-    const filledFields = fields.filter(field => field && field !== "" && field !== 0).length;
-    return Math.round((filledFields / fields.length) * 100);
-  };
 
   // Generate avatar from name
   const generateAvatar = (name) => {
@@ -82,20 +95,21 @@ export default function DoctorProfile() {
         setLoading(true);
         const { data } = await API.get("/doctors/profile");
         
+        const isKnownQualification = qualifications.includes(data.medicalQualification);
         setProfile({
           fullName: data.fullName || "",
           email: data.email || "",
           age: data.age || "",
           mobileNumber: data.mobileNumber || "",
           address: data.address || "",
-          medicalQualification: data.medicalQualification || "",
-          specialization: data.specialization || "",
+          medicalQualification: isKnownQualification ? (data.medicalQualification || "MBBS") : "Other",
+          otherQualification: isKnownQualification ? "" : (data.medicalQualification || ""),
+          specialization: data.specialization || "General Physicians",
           medicalRegistrationId: data.medicalRegistrationId || "",
           yearsOfExperience: data.yearsOfExperience || "",
           hospitalClinicName: data.hospitalClinicName || "",
           hospitalClinicAddress: data.hospitalClinicAddress || "",
-          consultationFeesOnline: data.consultationFeesOnline || "",
-          consultationFeesOffline: data.consultationFeesOffline || "",
+          fees: data.fees || data.consultationFeesOnline || data.consultationFeesOffline || "",
           profileImage: data.profileImage || "",
           status: data.status || "pending",
         });
@@ -161,6 +175,12 @@ export default function DoctorProfile() {
   };
 
   const handleSave = async () => {
+    // Age validation
+    if (Number(profile.age) < 20) {
+      dispatch(showToast({ message: "Age must be at least 20.", type: "error" }));
+      return;
+    }
+
     // Validation
     if (!profile.fullName || !profile.mobileNumber || !profile.address) {
       dispatch(showToast({ 
@@ -180,9 +200,14 @@ export default function DoctorProfile() {
       return;
     }
 
-    if (!profile.consultationFeesOnline || !profile.consultationFeesOffline) {
+    if (profile.medicalQualification === 'Other' && !profile.otherQualification.trim()) {
+      dispatch(showToast({ message: 'Please specify your qualification', type: 'error' }));
+      return;
+    }
+
+    if (!profile.fees) {
       dispatch(showToast({ 
-        message: "Please enter consultation fees for both online and offline", 
+        message: "Please enter your consultation fee", 
         type: "error" 
       }));
       return;
@@ -197,17 +222,9 @@ export default function DoctorProfile() {
       return;
     }
 
-    if (isNaN(profile.consultationFeesOnline) || Number(profile.consultationFeesOnline) < 0) {
+    if (isNaN(profile.fees) || Number(profile.fees) < 0) {
       dispatch(showToast({ 
-        message: "Online consultation fees must be a valid number", 
-        type: "error" 
-      }));
-      return;
-    }
-
-    if (isNaN(profile.consultationFeesOffline) || Number(profile.consultationFeesOffline) < 0) {
-      dispatch(showToast({ 
-        message: "Offline consultation fees must be a valid number", 
+        message: "Consultation fees must be a valid number", 
         type: "error" 
       }));
       return;
@@ -221,15 +238,19 @@ export default function DoctorProfile() {
       formData.append("fullName", profile.fullName);
       formData.append("mobileNumber", profile.mobileNumber);
       formData.append("address", profile.address);
+      formData.append("age", profile.age);
       
       // Professional Information
-      formData.append("medicalQualification", profile.medicalQualification);
+      if (profile.medicalQualification === 'Other') {
+        formData.append("medicalQualification", profile.otherQualification);
+      } else {
+        formData.append("medicalQualification", profile.medicalQualification);
+      }
       formData.append("specialization", profile.specialization);
       formData.append("yearsOfExperience", profile.yearsOfExperience);
       formData.append("hospitalClinicName", profile.hospitalClinicName);
       formData.append("hospitalClinicAddress", profile.hospitalClinicAddress);
-      formData.append("consultationFeesOnline", profile.consultationFeesOnline);
-      formData.append("consultationFeesOffline", profile.consultationFeesOffline);
+      formData.append("fees", profile.fees);
       
       // Only append image if it's a File object (not a string URL)
       if (profile.profileImage && profile.profileImage instanceof File) {
@@ -406,12 +427,7 @@ export default function DoctorProfile() {
                       className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                     >
                       <option value="">Select specialization...</option>
-                      <option value="Cardiologists">Cardiologists</option>
-                      <option value="Pediatricians">Pediatricians</option>
-                      <option value="Neurologists">Neurologists</option>
-                      <option value="Dermatologists">Dermatologists</option>
-                      <option value="Dentists">Dentists</option>
-                      <option value="General Physicians">General Physicians</option>
+                      {specializations.map((spec) => <option key={spec} value={spec}>{spec}</option>)}
                     </select>
                   </div>
                   <div className="flex items-center gap-2">
@@ -500,6 +516,7 @@ export default function DoctorProfile() {
                   value={profile.age}
                   onChange={(e) => handleChange("age", e.target.value)}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  min="20"
                 />
               ) : (
                 <p className="text-gray-900 py-2.5">{profile.age || "Not provided"}</p>
@@ -534,16 +551,23 @@ export default function DoctorProfile() {
                 Medical Qualification {editMode && <span className="text-red-500">*</span>}
               </label>
               {editMode ? (
-                <input
-                  type="text"
-                  value={profile.medicalQualification}
-                  onChange={(e) => handleChange("medicalQualification", e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                  placeholder="e.g., MBBS, MD, etc."
-                  required
-                />
+                <>
+                  <select name="medicalQualification" value={profile.medicalQualification} onChange={(e) => handleChange("medicalQualification", e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-white">
+                    {qualifications.map((q) => <option key={q} value={q}>{q}</option>)}
+                  </select>
+                  {profile.medicalQualification === "Other" && (
+                    <div className="mt-4 animate-in fade-in slide-in-from-top-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Please Specify Qualification</label>
+                      <input type="text" name="otherQualification" value={profile.otherQualification} onChange={(e) => handleChange("otherQualification", e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none" placeholder="Enter your qualification" required />
+                    </div>
+                  )}
+                </>
               ) : (
-                <p className="text-gray-900 py-2.5">{profile.medicalQualification || "Not provided"}</p>
+                <p className="text-gray-900 py-2.5">
+                  {profile.medicalQualification === 'Other' 
+                    ? profile.otherQualification 
+                    : profile.medicalQualification || "Not provided"}
+                </p>
               )}
             </div>
 
@@ -558,13 +582,7 @@ export default function DoctorProfile() {
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                   required
                 >
-                  <option value="">Select specialization...</option>
-                  <option value="Cardiologists">Cardiologists</option>
-                  <option value="Pediatricians">Pediatricians</option>
-                  <option value="Neurologists">Neurologists</option>
-                  <option value="Dermatologists">Dermatologists</option>
-                  <option value="Dentists">Dentists</option>
-                  <option value="General Physicians">General Physicians</option>
+                  {specializations.map((spec) => <option key={spec} value={spec}>{spec}</option>)}
                 </select>
               ) : (
                 <p className="text-gray-900 py-2.5">{profile.specialization || "Not provided"}</p>
@@ -633,39 +651,20 @@ export default function DoctorProfile() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Consultation Fees (Online) ₹ {editMode && <span className="text-red-500">*</span>}
+                Consultation Fees ₹ {editMode && <span className="text-red-500">*</span>}
               </label>
               {editMode ? (
                 <input
                   type="number"
                   min="0"
                   step="0.01"
-                  value={profile.consultationFeesOnline}
-                  onChange={(e) => handleChange("consultationFeesOnline", e.target.value)}
+                  value={profile.fees}
+                  onChange={(e) => handleChange("fees", e.target.value)}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
                   required
                 />
               ) : (
-                <p className="text-gray-900 py-2.5">₹{profile.consultationFeesOnline || "Not provided"}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Consultation Fees (Offline) ₹ {editMode && <span className="text-red-500">*</span>}
-              </label>
-              {editMode ? (
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={profile.consultationFeesOffline}
-                  onChange={(e) => handleChange("consultationFeesOffline", e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                  required
-                />
-              ) : (
-                <p className="text-gray-900 py-2.5">₹{profile.consultationFeesOffline || "Not provided"}</p>
+                <p className="text-gray-900 py-2.5">₹{profile.fees || "Not provided"}</p>
               )}
             </div>
           </div>

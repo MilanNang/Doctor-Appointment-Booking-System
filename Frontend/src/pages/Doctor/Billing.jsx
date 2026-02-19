@@ -1,14 +1,10 @@
 // src/pages/Billing.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { useSelector, useDispatch } from "react-redux";
 import { showToast } from "../../Redux/toastSlice";
 import {
   Loader2,
-  CheckCircle,
-  Clock,
-  XCircle,
-  IndianRupee,
   Calendar,
 } from "lucide-react";
 
@@ -26,13 +22,8 @@ export default function Billing() {
   const isAdmin = user?.role === "admin";
   const isPatient = user?.role === "patient";
 
-  useEffect(() => {
-    fetchPayments();
-    if (isPatient) fetchAppointments();
-  }, []);
-
   // ✅ Safe Fetch Payments
-  const fetchPayments = async () => {
+  const fetchPayments = useCallback(async () => {
     try {
       setLoading(true);
       const endpoint = isAdmin
@@ -55,10 +46,10 @@ export default function Billing() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAdmin, isPatient, token]);
 
   // ✅ Safe Fetch Patient's Appointments
-  const fetchAppointments = async () => {
+  const fetchAppointments = useCallback(async () => {
     try {
       const res = await axios.get("/api/appointments/my", {
         headers: { Authorization: `Bearer ${token}` },
@@ -69,7 +60,12 @@ export default function Billing() {
       console.error("Error fetching appointments:", err);
       setAppointments([]);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    fetchPayments();
+    if (isPatient) fetchAppointments();
+  }, [fetchPayments, fetchAppointments, isPatient]);
 
   // ✅ Create Cash Payment
   const handleCreatePayment = async (e) => {

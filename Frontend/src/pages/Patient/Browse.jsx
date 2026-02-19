@@ -1,12 +1,10 @@
-import React, { useEffect, useState } from "react";
-import { useDispatch } from "react-redux";
+import React, { useEffect, useState, useMemo } from "react";
 import { Search } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { showToast } from "../../Redux/toastSlice";
 
 export default function BrowseDoctors() {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const [page, setPage] = useState(1);
@@ -16,12 +14,21 @@ export default function BrowseDoctors() {
     search: "",
   });
 
+  const specializations = [
+    "General Physicians",
+    "Dentists",
+    "Dermatologists",
+    "Neurologists",
+    "Pediatricians",
+    "Cardiologists",
+  ];
+
   const token = JSON.parse(localStorage.getItem("user"))?.token;
 
-  const api = axios.create({
+  const api = useMemo(() => axios.create({
     baseURL: "http://localhost:5000/api",
     headers: { Authorization: `Bearer ${token}` },
-  });
+  }), [token]);
 
   // Fetch all doctors
   useEffect(() => {
@@ -36,7 +43,7 @@ export default function BrowseDoctors() {
       }
     };
     fetchDoctors();
-  }, []);
+  }, [api]);
 
   // FIX: Correct availability logic
   const checkAvailability = (availability) => {
@@ -98,9 +105,9 @@ export default function BrowseDoctors() {
               }
             >
               <option>All Specialties</option>
-              <option>General</option>
-              <option>Cardiologist</option>
-              <option>Dentist</option>
+              {specializations.map((spec) => (
+                <option key={spec} value={spec}>{spec}</option>
+              ))}
             </select>
           </div>
           <p className="text-sm text-gray-600">

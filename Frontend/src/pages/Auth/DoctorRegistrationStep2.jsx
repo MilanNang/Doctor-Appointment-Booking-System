@@ -16,13 +16,25 @@ export default function DoctorRegistrationStep2() {
     yearsOfExperience: "",
     hospitalClinicName: "",
     hospitalClinicAddress: "",
-    consultationFeesOnline: "",
-    consultationFeesOffline: "",
+    fees: "",
   });
   const [loading, setLoading] = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  const specializations = [
+    "Cardiologists",
+    "Pediatricians",
+    "Neurologists",
+    "Dermatologists",
+    "Dentists",
+    "General Physicians",
+  ];
+
+  const qualifications = [
+    "MBBS", "BDS", "MD", "MS", "Other"
+  ];
 
   useEffect(() => {
     if (!email) {
@@ -45,7 +57,7 @@ export default function DoctorRegistrationStep2() {
     if (!formData.medicalQualification || !formData.specialization || 
         !formData.medicalRegistrationId || !formData.yearsOfExperience ||
         !formData.hospitalClinicName || !formData.hospitalClinicAddress ||
-        !formData.consultationFeesOnline || !formData.consultationFeesOffline) {
+        !formData.fees) {
       dispatch(showToast({ message: "Please fill all fields", type: "error" }));
       return;
     }
@@ -55,12 +67,7 @@ export default function DoctorRegistrationStep2() {
       return;
     }
 
-    if (isNaN(formData.consultationFeesOnline) || formData.consultationFeesOnline < 0) {
-      dispatch(showToast({ message: "Please enter valid consultation fees", type: "error" }));
-      return;
-    }
-
-    if (isNaN(formData.consultationFeesOffline) || formData.consultationFeesOffline < 0) {
+    if (isNaN(formData.fees) || formData.fees < 0) {
       dispatch(showToast({ message: "Please enter valid consultation fees", type: "error" }));
       return;
     }
@@ -70,8 +77,7 @@ export default function DoctorRegistrationStep2() {
       await API.post("/doctor-registration/step2", {
         ...formData,
         yearsOfExperience: Number(formData.yearsOfExperience),
-        consultationFeesOnline: Number(formData.consultationFeesOnline),
-        consultationFeesOffline: Number(formData.consultationFeesOffline),
+        fees: Number(formData.fees),
       });
       
       dispatch(showToast({ 
@@ -121,12 +127,7 @@ export default function DoctorRegistrationStep2() {
               required
             >
               <option value="">Select Qualification</option>
-              <option value="MBBS">MBBS</option>
-              <option value="MD">MD</option>
-              <option value="MS">MS</option>
-              <option value="DM">DM</option>
-              <option value="MCh">MCh</option>
-              <option value="Other">Other</option>
+              {qualifications.map(q => <option key={q} value={q}>{q}</option>)}
             </select>
           </div>
 
@@ -135,15 +136,16 @@ export default function DoctorRegistrationStep2() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Specialization <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
+            <select
               name="specialization"
               value={formData.specialization}
               onChange={handleChange}
-              placeholder="Cardiology, Neurology, etc."
               className="w-full px-4 py-2 border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
               required
-            />
+            >
+              <option value="">Select Specialization</option>
+              {specializations.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
           </div>
 
           {/* Medical Registration ID */}
@@ -212,39 +214,21 @@ export default function DoctorRegistrationStep2() {
           </div>
 
           {/* Consultation Fees */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Consultation Fees (Online) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                name="consultationFeesOnline"
-                value={formData.consultationFeesOnline}
-                onChange={handleChange}
-                placeholder="50"
-                min="0"
-                step="0.01"
-                className="w-full px-4 py-2 border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Consultation Fees (Offline) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                name="consultationFeesOffline"
-                value={formData.consultationFeesOffline}
-                onChange={handleChange}
-                placeholder="100"
-                min="0"
-                step="0.01"
-                className="w-full px-4 py-2 border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                required
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Consultation Fees (₹) <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              name="fees"
+              value={formData.fees}
+              onChange={handleChange}
+              placeholder="500"
+              min="0"
+              step="0.01"
+              className="w-full px-4 py-2 border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              required
+            />
           </div>
 
           <div className="flex gap-4 pt-4">

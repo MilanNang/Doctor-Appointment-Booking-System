@@ -1,8 +1,9 @@
 // src/pages/Bookings.jsx
-import React, { useEffect, useState } from "react";
-import { useSelector, useDispatch } from "react-redux";
+import React, { useEffect, useState, useCallback } from "react";
+import { useDispatch } from "react-redux";
 import API from "../util/api";
 import { showToast } from "../../Redux/toastSlice";
+import { getSocket } from "../../utils/socket";
 import {
   Calendar,
   Clock,
@@ -12,23 +13,29 @@ import {
   DollarSign,
   CheckCircle,
   XCircle,
+  FileText,
 } from "lucide-react";
 
 export default function Bookings() {
-  const { user } = useSelector((state) => state.auth);
   const dispatch = useDispatch();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Modal State
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [medicalReport, setMedicalReport] = useState({
+    diagnosis: "",
+    prescription: "",
+    followUpDate: "",
+    doctorNotes: ""
+  });
+  const [savingReport, setSavingReport] = useState(false);
 
   // FIXED: load state per button
   const [actionLoading, setActionLoading] = useState({ id: null, type: null });
 
-  useEffect(() => {
-    fetchDoctorBookings();
-  }, []);
-
-  const fetchDoctorBookings = async () => {
+  const fetchDoctorBookings = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -40,7 +47,28 @@ export default function Bookings() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchDoctorBookings();
+
+    // 🔴 NEW: Setup Socket.io for real-time updates
+    const socket = getSocket();
+    
+    socket.on("appointmentStatusUpdate", (data) => {
+      console.log("📡 Real-time update received:", data);
+      // Refresh appointments when status changes
+      fetchDoctorBookings();
+      dispatch(showToast({ 
+        message: "Appointment status updated", 
+        type: "info" 
+      }));
+    });
+
+    return () => {
+      socket.off("appointmentStatusUpdate");
+    };
+  }, [fetchDoctorBookings, dispatch]);
 
   const parseTime = (t) => {
     const m = t.match(/(\d{1,2}):(\d{2})(am|pm)/i);
@@ -57,7 +85,25 @@ export default function Bookings() {
     try {
       setActionLoading({ id, type });
 
-      await API.put(`/appointments/${id}`, { status: newStatus });
+      // 🩺 NEW: If completing, validate medical report
+      if (newStatus === "completed") {
+        const booking = bookings.find(b => b._id === id);
+        if (!booking || !booking.medicalReport?.diagnosis || !booking.medicalReport?.prescription) {
+          dispatch(showToast({ 
+            message: "Please fill diagnosis and prescription before completing", 
+            type: "warning" 
+          }));
+          setActionLoading({ id: null, type: null });
+          return;
+        }
+      }
+
+      await API.put(`/appointments/${id}`, { 
+        status: newStatus,
+        ...(newStatus === "completed" && { 
+          medicalReport: bookings.find(b => b._id === id)?.medicalReport 
+        })
+      });
 
       await fetchDoctorBookings();
       dispatch(showToast({ message: `Appointment ${newStatus}!`, type: "success" }));
@@ -65,6 +111,58 @@ export default function Bookings() {
       dispatch(showToast({ message: err.response?.data?.message || "Failed to update status", type: "error" }));
     } finally {
       setActionLoading({ id: null, type: null });
+    }
+  };
+
+  const openDetailsModal = (booking) => {
+    setSelectedBooking(booking);
+    setMedicalReport({
+      diagnosis: booking.medicalReport?.diagnosis || "",
+      prescription: booking.medicalReport?.prescription || "",
+      followUpDate: booking.medicalReport?.followUpDate ? booking.medicalReport.followUpDate.split('T')[0] : "",
+      doctorNotes: booking.medicalReport?.doctorNotes || ""
+    });
+  };
+
+  const handleSaveReport = async () => {
+    setSavingReport(true);
+    try {
+      // Save medical report to local state
+      setBookings(prev => prev.map(b => 
+        b._id === selectedBooking._id 
+          ? { ...b, medicalReport } 
+          : b
+      ));
+      dispatch(showToast({ message: "Medical report saved locally. Complete appointment to finalize.", type: "success" }));
+      setSelectedBooking(null);
+    } catch (err) {
+      dispatch(showToast({ message: "Failed to save report", type: "error" }));
+    } finally {
+      setSavingReport(false);
+    }
+  };
+
+  // 🕒 NEW: Check if current time >= appointment time
+  const canStartConsultation = (date, time) => {
+    try {
+      const appointmentDateTime = new Date(`${date} ${time}`);
+      const currentTime = new Date();
+      return currentTime >= appointmentDateTime;
+    } catch {
+      return true; // If parsing fails, allow action
+    }
+  };
+
+  // 🚫 NEW: Check if can mark as no-show (15 mins past appointment time)
+  const canMarkNoShow = (date, time) => {
+    try {
+      const appointmentDateTime = new Date(`${date} ${time}`);
+      const currentTime = new Date();
+      const timeDiff = currentTime - appointmentDateTime;
+      const fifteenMinutes = 15 * 60 * 1000;
+      return timeDiff >= fifteenMinutes;
+    } catch {
+      return false;
     }
   };
 
@@ -81,6 +179,7 @@ export default function Bookings() {
       "in-progress": "bg-indigo-100 text-indigo-700 border-indigo-200",
       completed: "bg-blue-100 text-blue-700 border-blue-200",
       cancelled: "bg-red-100 text-red-700 border-red-200",
+      "no-show": "bg-orange-100 text-orange-700 border-orange-200",
     };
     return s[status] || "bg-gray-100 text-gray-700 border-gray-200";
   };
@@ -183,6 +282,13 @@ export default function Bookings() {
                           <DollarSign className="w-5 h-5" />
                           ₹{ap.fees}
                         </div>
+
+                        <button
+                          onClick={() => openDetailsModal(ap)}
+                          className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                        >
+                          <FileText className="w-4 h-4" /> Details & Notes
+                        </button>
                       </div>
 
                       {/* Actions */}
@@ -233,10 +339,15 @@ export default function Bookings() {
                           <button
                             onClick={() => handleStatusChange(ap._id, "in-progress", "start")}
                             disabled={
-                              actionLoading.id === ap._id &&
-                              actionLoading.type === "start"
+                              !canStartConsultation(ap.date, ap.time) ||
+                              (actionLoading.id === ap._id && actionLoading.type === "start")
                             }
-                            className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 disabled:opacity-50 transition font-medium"
+                            className={`flex-1 py-2.5 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 transition font-medium ${
+                              canStartConsultation(ap.date, ap.time)
+                                ? "bg-blue-600 text-white hover:bg-blue-700"
+                                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            }`}
+                            title={!canStartConsultation(ap.date, ap.time) ? "Can only start at appointment time" : ""}
                           >
                             {actionLoading.id === ap._id &&
                             actionLoading.type === "start" ? (
@@ -244,8 +355,28 @@ export default function Bookings() {
                             ) : (
                               <Clock className="w-4 h-4" />
                             )}
-                            Start
+                            {canStartConsultation(ap.date, ap.time) ? "Start" : "Waiting for Time"}
                           </button>
+
+                          {/* 🚫 NEW: No Show Button */}
+                          {canMarkNoShow(ap.date, ap.time) && (
+                            <button
+                              onClick={() => handleStatusChange(ap._id, "no-show", "noshow")}
+                              disabled={
+                                actionLoading.id === ap._id &&
+                                actionLoading.type === "noshow"
+                              }
+                              className="flex-1 bg-orange-100 text-orange-600 py-2.5 rounded-lg hover:bg-orange-200 flex items-center justify-center gap-2 disabled:opacity-50 transition font-medium"
+                            >
+                              {actionLoading.id === ap._id &&
+                              actionLoading.type === "noshow" ? (
+                                <Loader2 className="animate-spin w-4 h-4" />
+                              ) : (
+                                <XCircle className="w-4 h-4" />
+                              )}
+                              No Show
+                            </button>
+                          )}
 
                           <button
                             onClick={() => handleStatusChange(ap._id, "cancelled", "cancel")}
@@ -269,7 +400,17 @@ export default function Bookings() {
                       {ap.status === "in-progress" && (
                         <div className="flex gap-3 mt-4 pt-4 border-t border-gray-200">
                           <button
-                            onClick={() => handleStatusChange(ap._id, "completed", "complete")}
+                            onClick={() => {
+                              // 🩺 Check if medical report is filled
+                              if (!ap.medicalReport?.diagnosis || !ap.medicalReport?.prescription) {
+                                dispatch(showToast({ 
+                                  message: "Please fill diagnosis and prescription in Details & Notes first", 
+                                  type: "warning" 
+                                }));
+                                return;
+                              }
+                              handleStatusChange(ap._id, "completed", "complete");
+                            }}
                             disabled={
                               actionLoading.id === ap._id &&
                               actionLoading.type === "complete"
@@ -309,6 +450,88 @@ export default function Bookings() {
             </div>
           ))}
       </div>
+
+      {/* Medical Details & Notes Modal */}
+      {selectedBooking && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b flex justify-between items-center">
+              <h3 className="text-xl font-bold text-gray-900">Appointment Details</h3>
+              <button onClick={() => setSelectedBooking(null)} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {/* Patient Medical History (Read-Only) */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                  <User className="w-4 h-4" /> Patient Medical History
+                </h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><span className="text-gray-500">Blood Group:</span> <span className="font-medium">{selectedBooking.patient?.medicalHistory?.bloodGroup || "N/A"}</span></div>
+                  <div><span className="text-gray-500">Allergies:</span> <span className="font-medium">{selectedBooking.patient?.medicalHistory?.allergies || "None"}</span></div>
+                  <div className="col-span-2"><span className="text-gray-500">Chronic Diseases:</span> <span className="font-medium">{selectedBooking.patient?.medicalHistory?.chronicDiseases || "None"}</span></div>
+                  <div className="col-span-2"><span className="text-gray-500">Current Medications:</span> <span className="font-medium">{selectedBooking.patient?.medicalHistory?.currentMedications || "None"}</span></div>
+                </div>
+              </div>
+
+              {/* Doctor Notes (Editable) */}
+              <div>
+                <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                  <FileText className="w-4 h-4" /> Doctor Notes & Prescription
+                </h4>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Diagnosis</label>
+                    <input 
+                      type="text" 
+                      className="w-full p-2 border rounded-lg"
+                      value={medicalReport.diagnosis}
+                      onChange={(e) => setMedicalReport({...medicalReport, diagnosis: e.target.value})}
+                      placeholder="Primary diagnosis..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Prescription</label>
+                    <textarea 
+                      className="w-full p-2 border rounded-lg"
+                      rows="3"
+                      value={medicalReport.prescription}
+                      onChange={(e) => setMedicalReport({...medicalReport, prescription: e.target.value})}
+                      placeholder="Rx..."
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Follow-up Date</label>
+                      <input 
+                        type="date" 
+                        className="w-full p-2 border rounded-lg"
+                        value={medicalReport.followUpDate}
+                        onChange={(e) => setMedicalReport({...medicalReport, followUpDate: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Private Notes</label>
+                    <textarea 
+                      className="w-full p-2 border rounded-lg"
+                      rows="2"
+                      value={medicalReport.doctorNotes}
+                      onChange={(e) => setMedicalReport({...medicalReport, doctorNotes: e.target.value})}
+                      placeholder="Internal notes..."
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 border-t bg-gray-50 flex justify-end gap-3">
+              <button onClick={() => setSelectedBooking(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg">Cancel</button>
+              <button onClick={handleSaveReport} disabled={savingReport} className="px-6 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50">{savingReport ? "Saving..." : "Save Report"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

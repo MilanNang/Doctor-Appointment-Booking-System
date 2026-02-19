@@ -31,14 +31,6 @@ const doctorSchema = new mongoose.Schema({
     type: String,
     default: "",
   },
-  consultationFeesOnline: {
-    type: Number,
-    default: 0,
-  },
-  consultationFeesOffline: {
-    type: Number,
-    default: 0,
-  },
   // Legacy fields (for backward compatibility)
   experience: {
     type: Number,

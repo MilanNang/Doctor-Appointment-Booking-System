@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import cors from "cors";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
+import { createServer } from "http";
+import { Server } from "socket.io";
 
 
 import doctorRoutes from "./routes/doctorRoutes.js";
@@ -14,6 +16,7 @@ import appointmentRoutes from "./routes/appointmentRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import doctorRegistrationRoutes from "./routes/doctorRegistrationRoutes.js";
+import slotRoutes from "./routes/slotroutes.js";
 
 dotenv.config();
 
@@ -21,6 +24,30 @@ console.log("📧 ENV CHECK:", process.env.EMAIL_USER, process.env.EMAIL_PASS ? 
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// 🔴 NEW: Create HTTP server and Socket.io instance
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    credentials: true
+  }
+});
+
+// 🔴 NEW: Socket.io connection handling
+io.on("connection", (socket) => {
+  console.log("✅ Client connected:", socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("❌ Client disconnected:", socket.id);
+  });
+});
+
+// 🔴 NEW: Make io accessible in routes
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
 
 // Middleware
 app.use(express.json());
@@ -39,6 +66,8 @@ app.use("/api/appointments", appointmentRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/doctor-registration", doctorRegistrationRoutes);
+app.use("/api/slots", slotRoutes);
+
 
 // Database connection with timeout settings
 mongoose.connect(process.env.MONGO_URI, {
@@ -59,7 +88,8 @@ app.get("/", (req, res) => {
   res.send("API running 🚀");
 });
 
-// Start server
-app.listen(PORT, () => {
+// 🔴 UPDATED: Start server using httpServer instead of app
+httpServer.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🔴 Socket.io enabled`);
 });

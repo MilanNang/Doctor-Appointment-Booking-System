@@ -1,5 +1,7 @@
 import Doctor from "../models/Doctor.js";
 import Appointment from "../models/Appointment.js";
+import { generateSlots } from "./doctorController.js";
+import Slot from "../models/AppointmentSlot.js";
 
 // @desc   Get all approved doctors (browse/search)
 export const getAllDoctors = async (req, res) => {
@@ -28,27 +30,67 @@ export const getDoctorById = async (req, res) => {
   }
 };
 
-// @desc   Book appointment
-export const bookAppointment = async (req, res) => {
+// @desc   Get available slots for a doctor on a specific date
+export const getDoctorAvailableSlots = async (req, res) => {
   try {
-    const { doctorId, date, time } = req.body;
+    const { doctorId, date } = req.query;
+    
+    if (!doctorId || !date) {
+        return res.status(400).json({ message: "Doctor ID and Date are required" });
+    }
 
-    // check if doctor exists
     const doctor = await Doctor.findById(doctorId);
     if (!doctor) return res.status(404).json({ message: "Doctor not found" });
 
-    // check if slot is already taken
-    const existing = await Appointment.findOne({ doctor: doctorId, date, time, status: "booked" });
-    if (existing) return res.status(400).json({ message: "This slot is already booked" });
+    // 1. Try to find existing slots in DB
+    let dbSlots = await Slot.find({ doctorId, date });
 
-    const appointment = await Appointment.create({
-      doctor: doctorId,
-      patient: req.user._id,
-      date,
-      time
-    });
+    // 🧹 Self-healing: Remove malformed slots
+    if (dbSlots.some(s => !s.startTime)) {
+        await Slot.deleteMany({ doctorId, date, startTime: { $exists: false } });
+        dbSlots = [];
+    }
 
-    res.json({ message: "Appointment booked successfully", appointment });
+    // 2. If no slots exist, generate and save them
+    if (dbSlots.length === 0) {
+        const appointments = await Appointment.find({
+            doctor: doctorId,
+            date: date,
+            status: { $nin: ['cancelled', 'rejected'] }
+        }).select('time status');
+
+        const timeStrings = generateSlots(doctor.availability || {}, date, appointments);
+
+        const newSlots = timeStrings.map(time => ({
+            doctorId,
+            date,
+            startTime: time,
+            isBooked: false
+        }));
+
+        if (newSlots.length > 0) {
+            dbSlots = await Slot.insertMany(newSlots);
+        }
+    }
+
+    // 3. Return only available slots
+    let availableSlots = dbSlots.filter(s => !s.isBooked);
+
+    // Filter out past slots
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    if (date < todayStr) {
+        availableSlots = [];
+    } else if (date === todayStr) {
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        availableSlots = availableSlots.filter(slot => {
+            const [h, m] = slot.startTime.split(':').map(Number);
+            return (h * 60 + m) > currentMinutes;
+        });
+    }
+
+    res.json({ date, slots: availableSlots });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

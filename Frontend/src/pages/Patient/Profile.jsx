@@ -12,6 +12,13 @@ export default function PatientProfile() {
   const [name, setName] = useState(user.name || "");
   const [email, setEmail] = useState(user.email || "");
   const [password, setPassword] = useState("");
+  const [medicalHistory, setMedicalHistory] = useState({
+    bloodGroup: user.medicalHistory?.bloodGroup || "",
+    allergies: user.medicalHistory?.allergies || "",
+    chronicDiseases: user.medicalHistory?.chronicDiseases || "",
+    pastSurgeries: user.medicalHistory?.pastSurgeries || "",
+    currentMedications: user.medicalHistory?.currentMedications || "",
+  });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -21,6 +28,7 @@ export default function PatientProfile() {
         const { data } = await API.get("/auth/verify");
         setName(data.name || "");
         setEmail(data.email || "");
+        if (data.medicalHistory) setMedicalHistory(data.medicalHistory);
       } catch (err) {
         // ignore — user may not be logged in here
       }
@@ -32,7 +40,7 @@ export default function PatientProfile() {
     e.preventDefault();
     setLoading(true);
     try {
-      const payload = { name, email };
+      const payload = { name, email, medicalHistory };
       if (password) payload.password = password;
 
       const { data } = await API.put("/auth/profile", payload);
@@ -47,6 +55,10 @@ export default function PatientProfile() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleHistoryChange = (e) => {
+    setMedicalHistory({ ...medicalHistory, [e.target.name]: e.target.value });
   };
 
   return (
@@ -89,6 +101,62 @@ export default function PatientProfile() {
                 placeholder="Leave blank to keep current password"
                 className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition"
               />
+            </div>
+
+            <div className="border-t pt-6 mt-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Medical History</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Blood Group</label>
+                  <select
+                    name="bloodGroup"
+                    value={medicalHistory.bloodGroup}
+                    onChange={handleHistoryChange}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  >
+                    <option value="">Select...</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Allergies</label>
+                  <input
+                    name="allergies"
+                    value={medicalHistory.allergies}
+                    onChange={handleHistoryChange}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    placeholder="e.g. Peanuts, Penicillin"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Chronic Diseases</label>
+                  <input
+                    name="chronicDiseases"
+                    value={medicalHistory.chronicDiseases}
+                    onChange={handleHistoryChange}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    placeholder="e.g. Diabetes, Hypertension"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Current Medications</label>
+                  <textarea
+                    name="currentMedications"
+                    value={medicalHistory.currentMedications}
+                    onChange={handleHistoryChange}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    rows="2"
+                    placeholder="List current medications..."
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="pt-4">

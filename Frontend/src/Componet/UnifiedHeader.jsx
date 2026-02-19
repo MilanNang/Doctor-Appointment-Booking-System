@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { Bell, LogOut } from "lucide-react";
+import { Bell, LogOut, Loader2 } from "lucide-react";
 import API from "../pages/util/api";
 import { logout } from "../Redux/authSlice";
 
@@ -11,6 +11,7 @@ export default function UnifiedHeader() {
   const notificationRef = useRef(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [isClearing, setIsClearing] = useState(false);
 
   const { user } = useSelector((state) => state.auth);
 
@@ -40,12 +41,52 @@ export default function UnifiedHeader() {
     try {
       const res = await API.get("/notifications");
       if (Array.isArray(res.data)) {
-        // show only unread notifications
-        const unread = res.data.filter((n) => !n.isRead);
-        setNotifications(unread.slice(0, 5)); // Show last 5 unread notifications
+        // Show last 5 notifications regardless of read status
+        setNotifications(res.data.slice(0, 5));
       }
     } catch (error) {
       console.log("Notifications not available");
+    }
+  };
+
+  const markAllAsRead = async () => {
+    const unread = notifications.filter((n) => !n.isRead);
+    if (unread.length === 0) return;
+
+    try {
+      await Promise.all(
+        unread.map((n) => API.patch(`/notifications/${n._id}/read`))
+      );
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } catch (err) {
+      console.error("Failed to mark notifications read", err);
+    }
+  };
+
+  const performClearAll = async () => {
+    if (notifications.length === 0) return;
+
+    setIsClearing(true);
+    try {
+      await API.delete("/notifications");
+      setNotifications([]);
+    } catch (err) {
+      console.error("Failed to clear notifications", err);
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
+  const handleNotificationClick = async (notification) => {
+    if (!notification.isRead) {
+      try {
+        await API.patch(`/notifications/${notification._id}/read`);
+        setNotifications((prev) =>
+          prev.map((n) => (n._id === notification._id ? { ...n, isRead: true } : n))
+        );
+      } catch (err) {
+        console.error("Failed to mark notification as read", err);
+      }
     }
   };
 
@@ -69,6 +110,8 @@ export default function UnifiedHeader() {
       .toUpperCase();
   };
 
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
   return (
     <header className="flex items-center justify-between px-6 py-4 border-b bg-white shadow-sm sticky top-0 z-40">
       {/* Left: Welcome message */}
@@ -85,30 +128,13 @@ export default function UnifiedHeader() {
         {/* Notification Bell */}
         <div className="relative" ref={notificationRef}>
           <button
-            onClick={async () => {
-              const opening = !isNotificationOpen;
-              setIsNotificationOpen(opening);
-
-              // If opening the dropdown, mark currently fetched notifications as read
-              if (opening && notifications.length > 0) {
-                try {
-                  await Promise.all(
-                    notifications.map((n) => API.put(`/notifications/${n._id}/read`))
-                  );
-                } catch (err) {
-                  console.error("Failed to mark notifications read", err);
-                } finally {
-                  // remove them from local list
-                  setNotifications([]);
-                }
-              }
-            }}
+            onClick={() => setIsNotificationOpen(!isNotificationOpen)}
             className="relative p-2 rounded-full hover:bg-gray-100 transition"
           >
             <Bell size={20} className="text-gray-600" />
-            {notifications.length > 0 && (
+            {unreadCount > 0 && (
               <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-yellow-500 rounded-full">
-                {notifications.length}
+                {unreadCount}
               </span>
             )}
           </button>
@@ -120,12 +146,31 @@ export default function UnifiedHeader() {
                 <h3 className="text-sm font-semibold text-gray-800">
                   Notifications
                 </h3>
-                <button
-                  onClick={fetchNotifications}
-                  className="text-xs text-yellow-600 hover:text-yellow-700 font-medium"
-                >
-                  Refresh
-                </button>
+                <div className="flex gap-3">
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={markAllAsRead}
+                      className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                  {notifications.length > 0 && (
+                    <button
+                      onClick={performClearAll}
+                      disabled={isClearing}
+                      className="text-xs text-red-600 hover:text-red-700 font-medium flex items-center gap-1"
+                    >
+                      {isClearing ? <Loader2 size={12} className="animate-spin" /> : "Clear all"}
+                    </button>
+                  )}
+                  <button
+                    onClick={fetchNotifications}
+                    className="text-xs text-yellow-600 hover:text-yellow-700 font-medium"
+                  >
+                    Refresh
+                  </button>
+                </div>
               </div>
 
               <div className="max-h-96 overflow-y-auto">
@@ -133,16 +178,26 @@ export default function UnifiedHeader() {
                   notifications.map((notif, idx) => (
                     <div
                       key={idx}
-                      className="p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition"
+                      onClick={() => handleNotificationClick(notif)}
+                      className={`p-4 border-b border-gray-100 cursor-pointer transition ${
+                        notif.isRead ? "bg-white hover:bg-gray-50" : "bg-blue-50 hover:bg-blue-100"
+                      }`}
                     >
-                      <p className="text-sm text-gray-800">
-                        {notif.message || "New notification"}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {notif.createdAt
-                          ? new Date(notif.createdAt).toLocaleDateString()
-                          : "Just now"}
-                      </p>
+                      <div className="flex items-start gap-2">
+                        {!notif.isRead && (
+                          <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
+                        )}
+                        <div>
+                          <p className={`text-sm ${notif.isRead ? "text-gray-600" : "text-gray-900 font-medium"}`}>
+                            {notif.message || "New notification"}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {notif.createdAt
+                              ? new Date(notif.createdAt).toLocaleDateString()
+                              : "Just now"}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   ))
                 ) : (
@@ -175,6 +230,7 @@ export default function UnifiedHeader() {
           <LogOut size={18} />
         </button>
       </div>
+
     </header>
   );
 }

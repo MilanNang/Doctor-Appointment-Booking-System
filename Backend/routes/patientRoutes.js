@@ -2,7 +2,8 @@ import express from "express";
 import {
   getAllDoctors,
   getDoctorById,
-  getMyAppointments
+  getMyAppointments,
+  getDoctorAvailableSlots
 } from "../controllers/patientController.js";
 
 import { bookAppointment } from "../controllers/appointmentController.js"; // ✅ FIXED
@@ -16,6 +17,9 @@ router.get("/doctors", protect, patientOnly, getAllDoctors);
 
 // Get doctor details
 router.get("/doctor/:id", protect, patientOnly, getDoctorById);
+
+// Get available slots
+router.get("/available-slots", protect, patientOnly, getDoctorAvailableSlots);
 
 // ✅ Book appointment (correct controller)
 router.post("/book", protect, patientOnly, bookAppointment);

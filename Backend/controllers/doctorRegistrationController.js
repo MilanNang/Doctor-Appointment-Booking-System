@@ -1,6 +1,4 @@
-import DoctorRegistrationRequest from "../models/DoctorRegistrationRequest.js";
 import User from "../models/User.js";
-import Doctor from "../models/Doctor.js";
 import { sendEmail } from "../utils/sendEmail.js";
 import bcrypt from "bcryptjs";
 import generateToken from "../utils/generateToken.js";
@@ -81,14 +79,13 @@ export const submitProfessionalDetails = async (req, res) => {
       yearsOfExperience,
       hospitalClinicName,
       hospitalClinicAddress,
-      consultationFeesOnline,
-      consultationFeesOffline,
+      fees,
     } = req.body;
 
     // Validate required fields
     if (!email || !medicalQualification || !specialization || !medicalRegistrationId || 
         !yearsOfExperience || !hospitalClinicName || !hospitalClinicAddress ||
-        consultationFeesOnline === undefined || consultationFeesOffline === undefined) {
+        fees === undefined) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -109,8 +106,7 @@ export const submitProfessionalDetails = async (req, res) => {
     request.yearsOfExperience = Number(yearsOfExperience);
     request.hospitalClinicName = hospitalClinicName;
     request.hospitalClinicAddress = hospitalClinicAddress;
-    request.consultationFeesOnline = Number(consultationFeesOnline);
-    request.consultationFeesOffline = Number(consultationFeesOffline);
+    request.fees = Number(fees);
     request.status = "pending";
     request.submittedAt = new Date();
 

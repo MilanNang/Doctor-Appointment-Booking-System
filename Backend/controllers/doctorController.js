@@ -1,8 +1,116 @@
 import Doctor from "../models/Doctor.js";
 import User from "../models/User.js";
 import { uploadToCloudinary } from "../utils/cloudinary.js";
-import {bookAppointment, getPatientAppointments} from './appointmentController.js'
 import Appointment from "../models/Appointment.js";
+
+// --- Slot Generation Logic ---
+
+/**
+ * Generates available time slots based on doctor's availability rules and existing appointments.
+ * @param {Object} availability - The doctor's availability object (weekly + exceptions).
+ * @param {string} dateStr - The date to generate slots for (YYYY-MM-DD).
+ * @param {Array} existingAppointments - Array of appointments for the date (must have 'time' and 'status').
+ * @returns {Array} Array of available time strings (HH:mm).
+ */
+export const generateSlots = (availability, dateStr, existingAppointments) => {
+  // Fixed configuration as per requirements
+  const duration = 40;
+  const buffer = 10;
+  const slotTotal = duration + buffer;
+
+  // Parse date to get day of week
+  const dateObj = new Date(dateStr);
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const dayName = days[dateObj.getDay()];
+
+  // 1. Check for Exceptions (Overrides)
+  let rule = null;
+  if (availability.exceptions && Array.isArray(availability.exceptions)) {
+    const exception = availability.exceptions.find(ex => {
+      // Compare YYYY-MM-DD
+      // Handle both Date objects and string dates safely
+      const d1 = new Date(ex.date).toISOString().split('T')[0];
+      const d2 = new Date(dateStr).toISOString().split('T')[0];
+      return d1 === d2;
+    });
+    
+    if (exception) {
+      if (exception.isUnavailable) return []; // Full day off
+      rule = exception;
+    }
+  }
+
+  // 2. Fallback to Weekly Schedule
+  if (!rule && availability.weekly && Array.isArray(availability.weekly)) {
+    const weeklyRule = availability.weekly.find(d => d.day === dayName);
+    if (weeklyRule && weeklyRule.isActive) {
+      rule = weeklyRule;
+    }
+  }
+
+  // If no rule found or not active, return empty
+  if (!rule) return [];
+
+  // 3. Generate Slots
+  const slots = [];
+  
+  const timeToMinutes = (t) => {
+    if (!t) return 0;
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  };
+
+  const minutesToTime = (m) => {
+    const h = Math.floor(m / 60).toString().padStart(2, '0');
+    const min = (m % 60).toString().padStart(2, '0');
+    return `${h}:${min}`;
+  };
+
+  const startMin = timeToMinutes(rule.startTime);
+  const endMin = timeToMinutes(rule.endTime);
+  
+  let breakStartMin = -1;
+  let breakEndMin = -1;
+
+  if (rule.hasBreak && rule.breakStart && rule.breakDuration) {
+    breakStartMin = timeToMinutes(rule.breakStart);
+    breakEndMin = breakStartMin + Number(rule.breakDuration); // duration in minutes
+  }
+
+  let currentMin = startMin;
+
+  // Loop until the slot end time exceeds the working hours end time
+  while (currentMin + duration <= endMin) {
+    const slotStart = currentMin;
+    const slotEnd = currentMin + duration;
+
+    // Check break overlap
+    let overlapsBreak = false;
+    if (breakStartMin !== -1) {
+      // Overlap if slot starts before break ends AND slot ends after break starts
+      if (slotStart < breakEndMin && slotEnd > breakStartMin) {
+        overlapsBreak = true;
+      }
+    }
+
+    if (!overlapsBreak) {
+      const timeStr = minutesToTime(slotStart);
+      
+      // Check existing appointments
+      // Filter out cancelled or rejected appointments
+      const isBooked = existingAppointments.some(app => app.time === timeStr && !['cancelled', 'rejected'].includes(app.status));
+
+      if (!isBooked) {
+        slots.push(timeStr);
+      }
+    }
+
+    // Move to next slot (Duration + Buffer)
+    currentMin += slotTotal;
+  }
+
+  return slots;
+};
 
 // Create or update doctor profile
 
@@ -21,7 +129,6 @@ export const createOrUpdateDoctor = async (req, res) => {
     }
 
     // Get User model to update personal info
-    const User = (await import("../models/User.js")).default;
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
@@ -95,7 +202,11 @@ export const createOrUpdateDoctor = async (req, res) => {
       
       if (availability) {
         try {
-          doctor.availability = typeof availability === "string" ? JSON.parse(availability) : availability;
+          const parsedAvail = typeof availability === "string" ? JSON.parse(availability) : availability;
+          // Enforce fixed settings
+          parsedAvail.consultationDuration = 40;
+          parsedAvail.bufferTime = 10;
+          doctor.availability = parsedAvail;
         } catch (e) {
           console.log("⚠️  Could not parse availability, skipping");
           doctor.availability = {};
@@ -174,7 +285,10 @@ export const createOrUpdateDoctor = async (req, res) => {
 
       if (availability) {
         try {
-          doctor.availability = typeof availability === "string" ? JSON.parse(availability) : availability;
+          const parsedAvail = typeof availability === "string" ? JSON.parse(availability) : availability;
+          parsedAvail.consultationDuration = 40;
+          parsedAvail.bufferTime = 10;
+          doctor.availability = parsedAvail;
         } catch (e) {
           doctor.availability = {};
         }
@@ -235,13 +349,26 @@ export const createOrUpdateDoctor = async (req, res) => {
 // Update availability
 export const updateAvailability = async (req, res) => {
   const { availability } = req.body;
-  const userId = req.user._id; // user id from auth middleware
+  const userId = req.user._id;
 
   try {
-    // find doctor by user reference
+    // Validate and parse availability
+    let availabilityData = availability;
+    if (typeof availability === 'string') {
+      try {
+        availabilityData = JSON.parse(availability);
+      } catch (e) {
+        return res.status(400).json({ message: "Invalid availability format" });
+      }
+    }
+
+    // Enforce fixed settings
+    availabilityData.consultationDuration = 40;
+    availabilityData.bufferTime = 10;
+
     const doctor = await Doctor.findOneAndUpdate(
       { user: userId },
-      { availability },
+      { availability: availabilityData },
       { new: true }
     );
 
@@ -256,7 +383,72 @@ export const updateAvailability = async (req, res) => {
   }
 };
 
+// 🚫 Block specific dates or set custom hours
+export const manageAvailabilityException = async (req, res) => {
+  try {
+    const { date, isUnavailable, startTime, endTime } = req.body;
+    const userId = req.user._id;
 
+    if (!date) return res.status(400).json({ message: "Date is required" });
+
+    const doctor = await Doctor.findOne({ user: userId });
+    if (!doctor) return res.status(404).json({ message: "Doctor profile not found" });
+
+    // Initialize availability structure if needed
+    if (!doctor.availability) doctor.availability = {};
+    if (!Array.isArray(doctor.availability.exceptions)) doctor.availability.exceptions = [];
+
+    // Remove existing exception for this date to avoid duplicates
+    doctor.availability.exceptions = doctor.availability.exceptions.filter(
+      (ex) => ex.date !== date
+    );
+
+    // Add new exception
+    doctor.availability.exceptions.push({
+      date,
+      isUnavailable: isUnavailable === true,
+      startTime,
+      endTime,
+    });
+
+    // Mark mixed type as modified
+    doctor.markModified("availability");
+    await doctor.save();
+
+    res.json({
+      success: true,
+      message: "Availability exception updated",
+      availability: doctor.availability,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to update exception", error: err.message });
+  }
+};
+
+// Get slots for doctor (Preview)
+export const getDoctorSlots = async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ message: "Date is required (YYYY-MM-DD)" });
+
+    const doctor = await Doctor.findOne({ user: req.user._id });
+    if (!doctor) return res.status(404).json({ message: "Doctor not found" });
+
+    // Get appointments for this doctor and date
+    const appointments = await Appointment.find({
+      doctor: doctor._id,
+      date: date,
+      status: { $nin: ['cancelled', 'rejected'] }
+    }).select('time status');
+
+    const slots = generateSlots(doctor.availability || {}, date, appointments);
+    
+    res.json({ date, slots });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
 export const getDoctorDashboard = async (req, res) => {
   try {
@@ -426,7 +618,3 @@ export const getDoctorProfile = async (req, res) => {
     res.status(500).json({ error: error.message || "Failed to fetch doctor profile" });
   }
 };
-
-
-
-

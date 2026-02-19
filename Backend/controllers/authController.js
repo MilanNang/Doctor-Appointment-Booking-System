@@ -261,7 +261,7 @@ export const updateProfile = async (req, res) => {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const { name, email, password } = req.body;
+    const { name, email, password, medicalHistory } = req.body;
 
     if (email && email !== user.email) {
       const exists = await User.findOne({ email });
@@ -272,12 +272,17 @@ export const updateProfile = async (req, res) => {
     if (name) user.name = name;
     if (password) user.password = password; // will be hashed by pre-save hook
 
+    if (medicalHistory && user.role === 'patient') {
+      user.medicalHistory = { ...user.medicalHistory, ...medicalHistory };
+    }
+
     const updated = await user.save();
 
     res.json({
       _id: updated._id,
       name: updated.name,
       email: updated.email,
+      medicalHistory: updated.medicalHistory,
       role: updated.role,
       token: generateToken(updated._id, updated.role),
     });

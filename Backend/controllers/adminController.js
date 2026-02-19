@@ -1,6 +1,4 @@
-import Doctor from "../models/Doctor.js";
 import User from "../models/User.js";
-import DoctorRegistrationRequest from "../models/DoctorRegistrationRequest.js";
 import { sendEmail } from "../utils/sendEmail.js";
 import bcrypt from "bcryptjs";
 
@@ -142,11 +140,8 @@ export const approveDoctorRequest = async (req, res) => {
       yearsOfExperience: request.yearsOfExperience,
       hospitalClinicName: request.hospitalClinicName,
       hospitalClinicAddress: request.hospitalClinicAddress,
-      consultationFeesOnline: request.consultationFeesOnline,
-      consultationFeesOffline: request.consultationFeesOffline,
-      // Legacy fields
       experience: request.yearsOfExperience,
-      fees: request.consultationFeesOffline,
+      fees: request.fees,
       location: request.hospitalClinicAddress,
       status: "approved",
     });
