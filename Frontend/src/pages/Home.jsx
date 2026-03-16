@@ -1,5 +1,6 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
+import PublicHeader from "../Componet/PublicHeader";
 import gen from "../assets/General Physicians.jpeg";
 import dent from "../assets/Dentiist.jpeg";
 import Neurologists from "../assets/Neurologists.jpeg";
@@ -12,49 +13,17 @@ export default function HomePage() {
 
   // 🧩 Handle Become a Doctor
   const handleDoctorClick = () => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (user && user.role === "doctor" && user.token) {
-      navigate("/doctor");
-    } else {
-      navigate("/login");
-    }
+    navigate("/doctor-registration/step1");
   };
 
   // 🧩 Handle Patient Booking
   const handleBookClick = () => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    if (user && user.role === "patient" && user.token) {
-      navigate("/patient/browse-services");
-    } else {
-      navigate("/login");
-    }
+    navigate("/browse-doctors");
   };
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      {/* Navbar */}
-      <header className="bg-white border-b">
-        <div className="container mx-auto flex justify-between items-center py-4 px-6">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center text-white font-bold">H</div>
-            <div>
-              <h1 className="text-lg font-bold text-gray-800">Happy Health</h1>
-              <p className="text-xs muted">Care that makes you smile</p>
-            </div>
-          </div>
-
-          <nav className="hidden md:flex items-center space-x-6 muted text-sm">
-            <Link to="/how-it-works" className="hover:text-gray-800">How it works</Link>
-            <Link to="/patient/browse-services" className="hover:text-gray-800">Browse Doctors</Link>
-            <button onClick={handleDoctorClick} className="hover:text-gray-800">Become a Doctor</button>
-          </nav>
-
-          <div className="flex items-center space-x-3">
-            <Link to="/login" className="text-sm text-gray-700 hover:text-gray-900">Sign in</Link>
-            <Link to="/signup" className="btn-primary text-sm">Join now</Link>
-          </div>
-        </div>
-      </header>
+      <PublicHeader />
 
       {/* Hero Section */}
       <section className="flex flex-col items-center text-center py-28 px-6 bg-gradient-to-b from-yellow-50 to-white">

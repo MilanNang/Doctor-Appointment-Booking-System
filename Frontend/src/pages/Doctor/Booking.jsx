@@ -1,537 +1,354 @@
-// src/pages/Bookings.jsx
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
+import { Calendar, CheckCircle2, Clock3, FileText, Loader2, Stethoscope, XCircle } from "lucide-react";
 import API from "../util/api";
 import { showToast } from "../../Redux/toastSlice";
 import { getSocket } from "../../utils/socket";
-import {
-  Calendar,
-  Clock,
-  Loader2,
-  User,
-  Mail,
-  DollarSign,
-  CheckCircle,
-  XCircle,
-  FileText,
-} from "lucide-react";
+import ConfirmDialog from "../../Componet/ConfirmDialog";
 
-export default function Bookings() {
+const FLOW = ["pending", "approved", "arrived", "consultation-started", "consultation-completed"];
+
+const emptyMedicine = () => ({ name: "", dosage: "", frequency: "", duration: "", instructions: "" });
+const emptyNotes = { symptomsObserved: "", clinicalObservations: "", suggestedTests: "", internalRemarks: "" };
+
+export default function DoctorBookings() {
   const dispatch = useDispatch();
+
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
-  // Modal State
-  const [selectedBooking, setSelectedBooking] = useState(null);
-  const [medicalReport, setMedicalReport] = useState({
-    diagnosis: "",
-    prescription: "",
-    followUpDate: "",
-    doctorNotes: ""
-  });
-  const [savingReport, setSavingReport] = useState(false);
-
-  // FIXED: load state per button
+  const [selected, setSelected] = useState(null);
+  const [prescription, setPrescription] = useState({ diagnosis: "", medicines: [emptyMedicine()], advice: "", followUpDate: "" });
+  const [doctorNotes, setDoctorNotes] = useState(emptyNotes);
+  const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState({ id: null, type: null });
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, appointmentId: null, action: null, endpoint: null });
 
-  const fetchDoctorBookings = useCallback(async () => {
+  const fetchBookings = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
-
-      const res = await API.get("/appointments/doctor");
-      setBookings(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to load appointments");
+      const { data } = await API.get("/appointments/doctor");
+      setBookings(Array.isArray(data) ? data : []);
+    } catch (error) {
+      dispatch(showToast({ message: error.response?.data?.message || "Failed to load appointments", type: "error" }));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
-    fetchDoctorBookings();
-
-    // 🔴 NEW: Setup Socket.io for real-time updates
+    fetchBookings();
     const socket = getSocket();
-    
-    socket.on("appointmentStatusUpdate", (data) => {
-      console.log("📡 Real-time update received:", data);
-      // Refresh appointments when status changes
-      fetchDoctorBookings();
-      dispatch(showToast({ 
-        message: "Appointment status updated", 
-        type: "info" 
-      }));
-    });
+    socket.on("appointmentStatusUpdate", fetchBookings);
+    return () => socket.off("appointmentStatusUpdate", fetchBookings);
+  }, [fetchBookings]);
 
-    return () => {
-      socket.off("appointmentStatusUpdate");
+  const grouped = useMemo(() => {
+    return bookings.reduce((acc, item) => {
+      if (!acc[item.date]) acc[item.date] = [];
+      acc[item.date].push(item);
+      return acc;
+    }, {});
+  }, [bookings]);
+
+  const statusPill = (status) => {
+    const map = {
+      pending: "bg-amber-100 text-amber-700",
+      approved: "bg-blue-100 text-blue-700",
+      arrived: "bg-cyan-100 text-cyan-700",
+      "consultation-started": "bg-indigo-100 text-indigo-700",
+      "consultation-completed": "bg-green-100 text-green-700",
+      cancelled: "bg-red-100 text-red-700",
+      rejected: "bg-red-100 text-red-700",
+      "no-show": "bg-orange-100 text-orange-700"
     };
-  }, [fetchDoctorBookings, dispatch]);
-
-  const parseTime = (t) => {
-    const m = t.match(/(\d{1,2}):(\d{2})(am|pm)/i);
-    if (!m) return new Date(0);
-    let [_, h, min, p] = m;
-    h = Number(h);
-    min = Number(min);
-    if (p.toLowerCase() === "pm" && h !== 12) h += 12;
-    if (p.toLowerCase() === "am" && h === 12) h = 0;
-    return new Date(2000, 1, 1, h, min);
+    return map[status] || "bg-gray-100 text-gray-700";
   };
 
-  const handleStatusChange = async (id, newStatus, type) => {
-    try {
-      setActionLoading({ id, type });
+  const timeline = (status) => {
+    const index = FLOW.indexOf(status);
+    return (
+      <div className="flex items-center gap-1 mt-3 overflow-x-auto">
+        {FLOW.map((item, idx) => (
+          <div key={item} className="flex items-center gap-1">
+            <span className={`text-[10px] px-2 py-1 rounded-full whitespace-nowrap ${idx <= index ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"}`}>
+              {item.replaceAll("-", " ")}
+            </span>
+            {idx < FLOW.length - 1 && <span className="text-gray-300">→</span>}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
-      // 🩺 NEW: If completing, validate medical report
-      if (newStatus === "completed") {
-        const booking = bookings.find(b => b._id === id);
-        if (!booking || !booking.medicalReport?.diagnosis || !booking.medicalReport?.prescription) {
-          dispatch(showToast({ 
-            message: "Please fill diagnosis and prescription before completing", 
-            type: "warning" 
-          }));
-          setActionLoading({ id: null, type: null });
-          return;
-        }
+  const openClinical = async (appointment) => {
+    setSelected(appointment);
+
+    try {
+      const [presRes, noteRes] = await Promise.allSettled([
+        API.get(`/appointments/${appointment._id}/prescription`),
+        API.get(`/appointments/${appointment._id}/notes`)
+      ]);
+
+      if (presRes.status === "fulfilled") {
+        const p = presRes.value.data;
+        setPrescription({
+          diagnosis: p.diagnosis || "",
+          medicines: p.medicines?.length ? p.medicines : [emptyMedicine()],
+          advice: p.advice || "",
+          followUpDate: p.followUpDate ? p.followUpDate.slice(0, 10) : ""
+        });
+      } else {
+        setPrescription({ diagnosis: "", medicines: [emptyMedicine()], advice: "", followUpDate: "" });
       }
 
-      await API.put(`/appointments/${id}`, { 
-        status: newStatus,
-        ...(newStatus === "completed" && { 
-          medicalReport: bookings.find(b => b._id === id)?.medicalReport 
-        })
-      });
+      if (noteRes.status === "fulfilled") {
+        const n = noteRes.value.data;
+        setDoctorNotes({
+          symptomsObserved: n.symptomsObserved || "",
+          clinicalObservations: n.clinicalObservations || "",
+          suggestedTests: n.suggestedTests || "",
+          internalRemarks: n.internalRemarks || ""
+        });
+      } else {
+        setDoctorNotes(emptyNotes);
+      }
+    } catch {
+      setPrescription({ diagnosis: "", medicines: [emptyMedicine()], advice: "", followUpDate: "" });
+      setDoctorNotes(emptyNotes);
+    }
+  };
 
-      await fetchDoctorBookings();
-      dispatch(showToast({ message: `Appointment ${newStatus}!`, type: "success" }));
-    } catch (err) {
-      dispatch(showToast({ message: err.response?.data?.message || "Failed to update status", type: "error" }));
+  const askAction = (appointmentId, action, endpoint) => {
+    setConfirmDialog({ isOpen: true, appointmentId, action, endpoint });
+  };
+
+  const executeAction = async () => {
+    const { appointmentId, endpoint, action } = confirmDialog;
+    try {
+      setActionLoading({ id: appointmentId, type: action });
+      await API.put(endpoint);
+      dispatch(showToast({ message: `${action} successful`, type: "success" }));
+      await fetchBookings();
+    } catch (error) {
+      dispatch(showToast({ message: error.response?.data?.message || "Action failed", type: "error" }));
     } finally {
       setActionLoading({ id: null, type: null });
+      setConfirmDialog({ isOpen: false, appointmentId: null, action: null, endpoint: null });
     }
   };
 
-  const openDetailsModal = (booking) => {
-    setSelectedBooking(booking);
-    setMedicalReport({
-      diagnosis: booking.medicalReport?.diagnosis || "",
-      prescription: booking.medicalReport?.prescription || "",
-      followUpDate: booking.medicalReport?.followUpDate ? booking.medicalReport.followUpDate.split('T')[0] : "",
-      doctorNotes: booking.medicalReport?.doctorNotes || ""
-    });
-  };
-
-  const handleSaveReport = async () => {
-    setSavingReport(true);
+  const saveClinicalData = async () => {
+    if (!selected) return;
     try {
-      // Save medical report to local state
-      setBookings(prev => prev.map(b => 
-        b._id === selectedBooking._id 
-          ? { ...b, medicalReport } 
-          : b
-      ));
-      dispatch(showToast({ message: "Medical report saved locally. Complete appointment to finalize.", type: "success" }));
-      setSelectedBooking(null);
-    } catch (err) {
-      dispatch(showToast({ message: "Failed to save report", type: "error" }));
+      setSaving(true);
+      await API.post(`/appointments/${selected._id}/prescription`, prescription);
+      await API.post(`/appointments/${selected._id}/notes`, doctorNotes);
+      dispatch(showToast({ message: "Clinical data saved", type: "success" }));
+      await fetchBookings();
+    } catch (error) {
+      dispatch(showToast({ message: error.response?.data?.message || "Failed to save clinical data", type: "error" }));
     } finally {
-      setSavingReport(false);
+      setSaving(false);
     }
   };
 
-  // 🕒 NEW: Check if current time >= appointment time
-  const canStartConsultation = (date, time) => {
-    try {
-      const appointmentDateTime = new Date(`${date} ${time}`);
-      const currentTime = new Date();
-      return currentTime >= appointmentDateTime;
-    } catch {
-      return true; // If parsing fails, allow action
-    }
-  };
-
-  // 🚫 NEW: Check if can mark as no-show (15 mins past appointment time)
-  const canMarkNoShow = (date, time) => {
-    try {
-      const appointmentDateTime = new Date(`${date} ${time}`);
-      const currentTime = new Date();
-      const timeDiff = currentTime - appointmentDateTime;
-      const fifteenMinutes = 15 * 60 * 1000;
-      return timeDiff >= fifteenMinutes;
-    } catch {
-      return false;
-    }
-  };
-
-  const grouped = bookings.reduce((acc, ap) => {
-    if (!acc[ap.date]) acc[ap.date] = [];
-    acc[ap.date].push(ap);
-    return acc;
-  }, {});
-
-  const getStatusStyle = (status) => {
-    const s = {
-      pending: "bg-yellow-100 text-yellow-700 border-yellow-200",
-      approved: "bg-green-100 text-green-700 border-green-200",
-      "in-progress": "bg-indigo-100 text-indigo-700 border-indigo-200",
-      completed: "bg-blue-100 text-blue-700 border-blue-200",
-      cancelled: "bg-red-100 text-red-700 border-red-200",
-      "no-show": "bg-orange-100 text-orange-700 border-orange-200",
-    };
-    return s[status] || "bg-gray-100 text-gray-700 border-gray-200";
+  const addMedicine = () => setPrescription((prev) => ({ ...prev, medicines: [...prev.medicines, emptyMedicine()] }));
+  const removeMedicine = (index) => setPrescription((prev) => ({ ...prev, medicines: prev.medicines.filter((_, idx) => idx !== index) }));
+  const updateMedicine = (index, key, value) => {
+    setPrescription((prev) => ({
+      ...prev,
+      medicines: prev.medicines.map((item, idx) => (idx === index ? { ...item, [key]: value } : item))
+    }));
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <Loader2 className="animate-spin h-10 w-10 text-yellow-500" />
-        <p className="mt-3 text-gray-600">Loading your appointments...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <div className="bg-white p-8 shadow rounded-lg text-center">
-          <XCircle className="h-16 w-16 text-red-500 mx-auto" />
-          <h2 className="text-xl font-bold mt-4 mb-2 text-red-600">Error</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={fetchDoctorBookings}
-            className="bg-yellow-500 text-white px-6 py-2 rounded-lg hover:bg-yellow-600"
-          >
-            Retry
-          </button>
-        </div>
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white p-6 md:p-8">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-3 sm:p-4 lg:p-6">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900">My Appointments</h1>
-          <p className="text-gray-600 mt-2">{bookings.length} appointment{bookings.length !== 1 ? 's' : ''} found</p>
-        </div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-blue-900">Doctor Appointments</h1>
+        <p className="text-sm sm:text-base text-blue-700 mt-1">Status flow: Pending → Approved → Arrived → Consultation Started → Consultation Completed</p>
 
-        {Object.keys(grouped).length === 0 && (
-          <div className="card p-12 text-center">
-            <Calendar className="w-20 h-20 mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-500 text-xl">No appointments yet.</p>
+        {bookings.length === 0 && (
+          <div className="mt-6 bg-white border border-blue-100 rounded-2xl p-8 text-center">
+            <p className="text-blue-900 font-semibold">No appointments yet</p>
+            <p className="text-blue-600 text-sm mt-1">New patient bookings will appear here automatically.</p>
           </div>
         )}
 
-        {Object.keys(grouped)
-          .sort()
-          .map((date) => (
-            <div key={date} className="mb-10">
-              <div className="flex items-center gap-3 mb-6 card p-4">
-                <Calendar className="w-6 h-6 text-yellow-500" />
-                <h2 className="text-2xl font-bold text-gray-900">
-                  {new Date(date).toLocaleDateString("en-US", {
-                    weekday: "long",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </h2>
-              </div>
-
-              <div className="grid lg:grid-cols-2 gap-6">
-                {grouped[date]
-                  .sort((a, b) => parseTime(a.time) - parseTime(b.time))
-                  .map((ap) => (
-                    <div
-                      key={ap._id}
-                      className="card p-6 hover:shadow-md transition"
-                    >
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <User className="w-5 h-5 text-gray-400" />
-                            <p className="font-bold text-lg text-gray-900">
-                              {ap.patient?.name}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2 text-gray-600 text-sm">
-                            <Mail className="w-4 h-4" />
-                            {ap.patient?.email}
-                          </div>
-                        </div>
-
-                        <span
-                          className={`px-4 py-2 text-xs border rounded-full capitalize font-semibold ${getStatusStyle(
-                            ap.status
-                          )}`}
-                        >
-                          {ap.status}
-                        </span>
-                      </div>
-
-                      <div className="border-t border-gray-200 py-4 flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-gray-700 font-medium">
-                          <Clock className="w-5 h-5 text-yellow-500" />
-                          <span>{ap.time}</span>
-                        </div>
-
-                        <div className="flex items-center gap-2 text-yellow-600 font-bold text-lg">
-                          <DollarSign className="w-5 h-5" />
-                          ₹{ap.fees}
-                        </div>
-
-                        <button
-                          onClick={() => openDetailsModal(ap)}
-                          className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
-                        >
-                          <FileText className="w-4 h-4" /> Details & Notes
-                        </button>
-                      </div>
-
-                      {/* Actions */}
-                      {ap.status === "pending" && (
-                        <div className="flex gap-3 mt-4 pt-4 border-t border-gray-200">
-                          <button
-                            onClick={() =>
-                              handleStatusChange(ap._id, "approved", "approve")
-                            }
-                            disabled={
-                              actionLoading.id === ap._id &&
-                              actionLoading.type === "approve"
-                            }
-                            className="flex-1 bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 flex items-center justify-center gap-2 disabled:opacity-50 transition font-medium"
-                          >
-                            {actionLoading.id === ap._id &&
-                            actionLoading.type === "approve" ? (
-                              <Loader2 className="animate-spin w-4 h-4" />
-                            ) : (
-                              <CheckCircle className="w-4 h-4" />
-                            )}
-                            Approve
-                          </button>
-
-                          <button
-                            onClick={() =>
-                              handleStatusChange(ap._id, "cancelled", "cancel")
-                            }
-                            disabled={
-                              actionLoading.id === ap._id &&
-                              actionLoading.type === "cancel"
-                            }
-                            className="flex-1 bg-red-100 text-red-600 py-2.5 rounded-lg hover:bg-red-200 flex items-center justify-center gap-2 disabled:opacity-50 transition font-medium"
-                          >
-                            {actionLoading.id === ap._id &&
-                            actionLoading.type === "cancel" ? (
-                              <Loader2 className="animate-spin w-4 h-4" />
-                            ) : (
-                              <XCircle className="w-4 h-4" />
-                            )}
-                            Decline
-                          </button>
-                        </div>
-                      )}
-
-                      {ap.status === "approved" && (
-                        <div className="flex gap-3 mt-4 pt-4 border-t border-gray-200">
-                          <button
-                            onClick={() => handleStatusChange(ap._id, "in-progress", "start")}
-                            disabled={
-                              !canStartConsultation(ap.date, ap.time) ||
-                              (actionLoading.id === ap._id && actionLoading.type === "start")
-                            }
-                            className={`flex-1 py-2.5 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 transition font-medium ${
-                              canStartConsultation(ap.date, ap.time)
-                                ? "bg-blue-600 text-white hover:bg-blue-700"
-                                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                            }`}
-                            title={!canStartConsultation(ap.date, ap.time) ? "Can only start at appointment time" : ""}
-                          >
-                            {actionLoading.id === ap._id &&
-                            actionLoading.type === "start" ? (
-                              <Loader2 className="animate-spin w-4 h-4" />
-                            ) : (
-                              <Clock className="w-4 h-4" />
-                            )}
-                            {canStartConsultation(ap.date, ap.time) ? "Start" : "Waiting for Time"}
-                          </button>
-
-                          {/* 🚫 NEW: No Show Button */}
-                          {canMarkNoShow(ap.date, ap.time) && (
-                            <button
-                              onClick={() => handleStatusChange(ap._id, "no-show", "noshow")}
-                              disabled={
-                                actionLoading.id === ap._id &&
-                                actionLoading.type === "noshow"
-                              }
-                              className="flex-1 bg-orange-100 text-orange-600 py-2.5 rounded-lg hover:bg-orange-200 flex items-center justify-center gap-2 disabled:opacity-50 transition font-medium"
-                            >
-                              {actionLoading.id === ap._id &&
-                              actionLoading.type === "noshow" ? (
-                                <Loader2 className="animate-spin w-4 h-4" />
-                              ) : (
-                                <XCircle className="w-4 h-4" />
-                              )}
-                              No Show
-                            </button>
-                          )}
-
-                          <button
-                            onClick={() => handleStatusChange(ap._id, "cancelled", "cancel")}
-                            disabled={
-                              actionLoading.id === ap._id &&
-                              actionLoading.type === "cancel"
-                            }
-                            className="flex-1 bg-red-100 text-red-600 py-2.5 rounded-lg hover:bg-red-200 flex items-center justify-center gap-2 disabled:opacity-50 transition font-medium"
-                          >
-                            {actionLoading.id === ap._id &&
-                            actionLoading.type === "cancel" ? (
-                              <Loader2 className="animate-spin w-4 h-4" />
-                            ) : (
-                              <XCircle className="w-4 h-4" />
-                            )}
-                            Cancel
-                          </button>
-                        </div>
-                      )}
-
-                      {ap.status === "in-progress" && (
-                        <div className="flex gap-3 mt-4 pt-4 border-t border-gray-200">
-                          <button
-                            onClick={() => {
-                              // 🩺 Check if medical report is filled
-                              if (!ap.medicalReport?.diagnosis || !ap.medicalReport?.prescription) {
-                                dispatch(showToast({ 
-                                  message: "Please fill diagnosis and prescription in Details & Notes first", 
-                                  type: "warning" 
-                                }));
-                                return;
-                              }
-                              handleStatusChange(ap._id, "completed", "complete");
-                            }}
-                            disabled={
-                              actionLoading.id === ap._id &&
-                              actionLoading.type === "complete"
-                            }
-                            className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2 disabled:opacity-50 transition font-medium"
-                          >
-                            {actionLoading.id === ap._id &&
-                            actionLoading.type === "complete" ? (
-                              <Loader2 className="animate-spin w-4 h-4" />
-                            ) : (
-                              <CheckCircle className="w-4 h-4" />
-                            )}
-                            Complete
-                          </button>
-
-                          <button
-                            onClick={() => handleStatusChange(ap._id, "cancelled", "cancel")}
-                            disabled={
-                              actionLoading.id === ap._id &&
-                              actionLoading.type === "cancel"
-                            }
-                            className="flex-1 bg-red-100 text-red-600 py-2.5 rounded-lg hover:bg-red-200 flex items-center justify-center gap-2 disabled:opacity-50 transition font-medium"
-                          >
-                            {actionLoading.id === ap._id &&
-                            actionLoading.type === "cancel" ? (
-                              <Loader2 className="animate-spin w-4 h-4" />
-                            ) : (
-                              <XCircle className="w-4 h-4" />
-                            )}
-                            Cancel
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-              </div>
+        {Object.keys(grouped).sort().map((dateKey) => (
+          <section key={dateKey} className="mt-6">
+            <div className="flex items-center gap-2 text-blue-800 font-semibold mb-3">
+              <Calendar className="w-5 h-5" /> {new Date(dateKey).toDateString()}
             </div>
-          ))}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {grouped[dateKey].map((item) => (
+                <div key={item._id} className="bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
+                  <div className="flex justify-between">
+                    <div>
+                      <p className="font-semibold text-gray-900">{item.patient?.name}</p>
+                      <p className="text-sm text-gray-600">{item.patient?.email}</p>
+                    </div>
+                    <span className={`px-3 py-1 text-xs rounded-full capitalize ${statusPill(item.status)}`}>{item.status}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-3 text-sm text-gray-700">
+                    <div className="flex items-center gap-1"><Clock3 className="w-4 h-4" />{item.time}</div>
+                    <button className="text-blue-700 text-sm font-medium" onClick={() => openClinical(item)}>Clinical</button>
+                  </div>
+
+                  {item.review && (
+                    <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded px-2 py-1">
+                      Patient rating: {item.review.rating}/5 {item.review.comment ? `• ${item.review.comment}` : ""}
+                    </div>
+                  )}
+
+                  {timeline(item.status)}
+
+                  <div className="flex gap-2 mt-4 flex-wrap">
+                    {item.status === "pending" && (
+                      <>
+                        <button
+                          onClick={() => askAction(item._id, "Approve", `/appointments/${item._id}`)}
+                          disabled={actionLoading.id === item._id}
+                          className="px-3 py-2 rounded-lg bg-blue-600 text-white text-sm"
+                        >Approve</button>
+                        <button
+                          onClick={() => askAction(item._id, "Reject", `/appointments/${item._id}`)}
+                          disabled={actionLoading.id === item._id}
+                          className="px-3 py-2 rounded-lg bg-red-100 text-red-700 text-sm"
+                        >Reject</button>
+                      </>
+                    )}
+
+                    {item.status === "arrived" && (
+                      <button
+                        onClick={() => askAction(item._id, "Start Consultation", `/appointments/${item._id}/start-consultation`)}
+                        disabled={actionLoading.id === item._id}
+                        className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm"
+                      >Start Consultation</button>
+                    )}
+
+                    {item.status === "consultation-started" && (
+                      <button
+                        onClick={() => askAction(item._id, "Complete Consultation", `/appointments/${item._id}/complete-consultation`)}
+                        disabled={actionLoading.id === item._id}
+                        className="px-3 py-2 rounded-lg bg-green-600 text-white text-sm"
+                      >Complete Consultation</button>
+                    )}
+
+                    {item.status === "approved" && (
+                      <button
+                        onClick={() => askAction(item._id, "Mark No-show", `/appointments/${item._id}`)}
+                        disabled={actionLoading.id === item._id}
+                        className="px-3 py-2 rounded-lg bg-orange-100 text-orange-700 text-sm"
+                      >No-show</button>
+                    )}
+
+                    {item.status === "consultation-completed" && (
+                      <span className="px-3 py-2 text-xs rounded-lg bg-green-100 text-green-700 flex items-center gap-1">
+                        <CheckCircle2 className="w-4 h-4" /> Completed
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
       </div>
 
-      {/* Medical Details & Notes Modal */}
-      {selectedBooking && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b flex justify-between items-center">
-              <h3 className="text-xl font-bold text-gray-900">Appointment Details</h3>
-              <button onClick={() => setSelectedBooking(null)} className="text-gray-500 hover:text-gray-700">✕</button>
+      {selected && (
+        <div className="fixed inset-0 bg-blue-900/20 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+          <div className="w-full max-w-4xl bg-white rounded-xl shadow-xl max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h2 className="font-semibold text-blue-900 flex items-center gap-2"><Stethoscope className="w-5 h-5" /> Clinical Documentation</h2>
+              <button className="text-gray-500" onClick={() => setSelected(null)}><XCircle className="w-5 h-5" /></button>
             </div>
-            
-            <div className="p-6 space-y-6">
-              {/* Patient Medical History (Read-Only) */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                  <User className="w-4 h-4" /> Patient Medical History
-                </h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div><span className="text-gray-500">Blood Group:</span> <span className="font-medium">{selectedBooking.patient?.medicalHistory?.bloodGroup || "N/A"}</span></div>
-                  <div><span className="text-gray-500">Allergies:</span> <span className="font-medium">{selectedBooking.patient?.medicalHistory?.allergies || "None"}</span></div>
-                  <div className="col-span-2"><span className="text-gray-500">Chronic Diseases:</span> <span className="font-medium">{selectedBooking.patient?.medicalHistory?.chronicDiseases || "None"}</span></div>
-                  <div className="col-span-2"><span className="text-gray-500">Current Medications:</span> <span className="font-medium">{selectedBooking.patient?.medicalHistory?.currentMedications || "None"}</span></div>
-                </div>
-              </div>
 
-              {/* Doctor Notes (Editable) */}
-              <div>
-                <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                  <FileText className="w-4 h-4" /> Doctor Notes & Prescription
-                </h4>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Diagnosis</label>
-                    <input 
-                      type="text" 
-                      className="w-full p-2 border rounded-lg"
-                      value={medicalReport.diagnosis}
-                      onChange={(e) => setMedicalReport({...medicalReport, diagnosis: e.target.value})}
-                      placeholder="Primary diagnosis..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Prescription</label>
-                    <textarea 
-                      className="w-full p-2 border rounded-lg"
-                      rows="3"
-                      value={medicalReport.prescription}
-                      onChange={(e) => setMedicalReport({...medicalReport, prescription: e.target.value})}
-                      placeholder="Rx..."
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Follow-up Date</label>
-                      <input 
-                        type="date" 
-                        className="w-full p-2 border rounded-lg"
-                        value={medicalReport.followUpDate}
-                        onChange={(e) => setMedicalReport({...medicalReport, followUpDate: e.target.value})}
-                      />
+            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <h3 className="font-medium text-blue-800">Prescription</h3>
+                <textarea className="w-full border rounded-lg p-2" placeholder="Diagnosis (min 10 chars)" value={prescription.diagnosis} onChange={(e) => setPrescription((prev) => ({ ...prev, diagnosis: e.target.value }))} />
+
+                {prescription.medicines.map((med, index) => (
+                  <div key={index} className="border rounded-lg p-3 space-y-2 bg-blue-50/50">
+                    <input className="w-full border rounded p-2" placeholder="Medicine Name" value={med.name} onChange={(e) => updateMedicine(index, "name", e.target.value)} />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input className="w-full border rounded p-2" placeholder="Dosage (e.g. 500mg)" value={med.dosage} onChange={(e) => updateMedicine(index, "dosage", e.target.value)} />
+                      <input className="w-full border rounded p-2" placeholder="Frequency" value={med.frequency} onChange={(e) => updateMedicine(index, "frequency", e.target.value)} />
                     </div>
+                    <input className="w-full border rounded p-2" placeholder="Duration" value={med.duration} onChange={(e) => updateMedicine(index, "duration", e.target.value)} />
+                    <input className="w-full border rounded p-2" placeholder="Instructions (optional)" value={med.instructions} onChange={(e) => updateMedicine(index, "instructions", e.target.value)} />
+                    {prescription.medicines.length > 1 && (
+                      <button className="text-xs text-red-600" onClick={() => removeMedicine(index)}>Remove medicine</button>
+                    )}
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Private Notes</label>
-                    <textarea 
-                      className="w-full p-2 border rounded-lg"
-                      rows="2"
-                      value={medicalReport.doctorNotes}
-                      onChange={(e) => setMedicalReport({...medicalReport, doctorNotes: e.target.value})}
-                      placeholder="Internal notes..."
-                    />
-                  </div>
-                </div>
+                ))}
+
+                <button className="text-sm text-blue-700" onClick={addMedicine}>+ Add medicine</button>
+                <textarea className="w-full border rounded-lg p-2" placeholder="General advice (optional)" value={prescription.advice} onChange={(e) => setPrescription((prev) => ({ ...prev, advice: e.target.value }))} />
+                <input type="date" className="w-full border rounded-lg p-2" value={prescription.followUpDate} onChange={(e) => setPrescription((prev) => ({ ...prev, followUpDate: e.target.value }))} />
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="font-medium text-blue-800">Private Daily Notes (Doctor Only)</h3>
+                <textarea className="w-full border rounded-lg p-2" placeholder="Symptoms observed" value={doctorNotes.symptomsObserved} onChange={(e) => setDoctorNotes((prev) => ({ ...prev, symptomsObserved: e.target.value }))} />
+                <textarea className="w-full border rounded-lg p-2" placeholder="Clinical observations" value={doctorNotes.clinicalObservations} onChange={(e) => setDoctorNotes((prev) => ({ ...prev, clinicalObservations: e.target.value }))} />
+                <textarea className="w-full border rounded-lg p-2" placeholder="Suggested tests" value={doctorNotes.suggestedTests} onChange={(e) => setDoctorNotes((prev) => ({ ...prev, suggestedTests: e.target.value }))} />
+                <textarea className="w-full border rounded-lg p-2" placeholder="Internal remarks" value={doctorNotes.internalRemarks} onChange={(e) => setDoctorNotes((prev) => ({ ...prev, internalRemarks: e.target.value }))} />
               </div>
             </div>
 
-            <div className="p-6 border-t bg-gray-50 flex justify-end gap-3">
-              <button onClick={() => setSelectedBooking(null)} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg">Cancel</button>
-              <button onClick={handleSaveReport} disabled={savingReport} className="px-6 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:opacity-50">{savingReport ? "Saving..." : "Save Report"}</button>
+            <div className="p-4 border-t flex justify-end gap-2">
+              <button className="px-4 py-2 rounded-lg border" onClick={() => setSelected(null)}>Close</button>
+              <button className="px-4 py-2 rounded-lg bg-blue-600 text-white flex items-center gap-2" disabled={saving} onClick={saveClinicalData}>
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} Save Clinical Data
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.action || "Confirm"}
+        message={`Are you sure you want to ${String(confirmDialog.action || "").toLowerCase()}?`}
+        confirmText={confirmDialog.action || "Confirm"}
+        backdropClassName="bg-blue-900/20 backdrop-blur-sm"
+        isDangerous={["Reject", "Mark No-show"].includes(confirmDialog.action)}
+        onConfirm={async () => {
+          if (!confirmDialog.endpoint) return;
+          if (confirmDialog.endpoint.endsWith("/appointments/" + confirmDialog.appointmentId)) {
+            const statusMap = {
+              Approve: "approved",
+              Reject: "rejected",
+              "Mark No-show": "no-show"
+            };
+            try {
+              setActionLoading({ id: confirmDialog.appointmentId, type: confirmDialog.action });
+              await API.put(`/appointments/${confirmDialog.appointmentId}`, { status: statusMap[confirmDialog.action] });
+              await fetchBookings();
+              dispatch(showToast({ message: `${confirmDialog.action} successful`, type: "success" }));
+            } catch (error) {
+              dispatch(showToast({ message: error.response?.data?.message || "Action failed", type: "error" }));
+            } finally {
+              setActionLoading({ id: null, type: null });
+              setConfirmDialog({ isOpen: false, appointmentId: null, action: null, endpoint: null });
+            }
+            return;
+          }
+          executeAction();
+        }}
+        onCancel={() => setConfirmDialog({ isOpen: false, appointmentId: null, action: null, endpoint: null })}
+      />
     </div>
   );
 }

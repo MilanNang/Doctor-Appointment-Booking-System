@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { CheckCircle2, Users, Calendar, CreditCard, Shield, Smartphone } from "lucide-react";
+import { CheckCircle2, Users, Calendar, Shield, Smartphone } from "lucide-react";
+import PublicHeader from "../Componet/PublicHeader";
 
 export default function HowItWorks() {
   const navigate = useNavigate();
@@ -11,23 +12,7 @@ export default function HowItWorks() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Navbar */}
-      <header className="bg-white border-b sticky top-0 z-50">
-        <div className="container mx-auto flex justify-between items-center py-4 px-6">
-          <Link to="/" className="flex items-center gap-2 hover:opacity-80">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center text-white font-bold">H</div>
-            <div>
-              <h1 className="text-lg font-bold text-gray-800">Happy Health</h1>
-              <p className="text-xs text-gray-500">Care that makes you smile</p>
-            </div>
-          </Link>
-
-          <div className="flex items-center space-x-4">
-            <Link to="/" className="text-sm text-gray-700 hover:text-gray-900">← Back</Link>
-            <Link to="/login" className="btn-primary text-sm">Sign In</Link>
-          </div>
-        </div>
-      </header>
+      <PublicHeader sticky />
 
       {/* Hero Section */}
       <section className="py-16 px-6 bg-gradient-to-b from-yellow-50 to-white">
@@ -95,15 +80,11 @@ export default function HowItWorks() {
             {/* Step 3 */}
             <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-8 border-2 border-green-200">
               <div className="w-16 h-16 bg-green-500 text-white rounded-full flex items-center justify-center font-bold text-2xl mb-6">3</div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-4">Book & Pay</h3>
+              <h3 className="text-2xl font-bold text-gray-800 mb-4">Book Appointment</h3>
               <ul className="space-y-3 text-gray-700">
                 <li className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-500 mt-1 flex-shrink-0" />
                   <span>Select your preferred time slot</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 size={20} className="text-green-500 mt-1 flex-shrink-0" />
-                  <span>Complete secure payment</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-green-500 mt-1 flex-shrink-0" />
@@ -120,10 +101,6 @@ export default function HowItWorks() {
               <div className="flex items-start gap-3">
                 <Calendar className="text-blue-500 flex-shrink-0 mt-1" size={20} />
                 <span className="text-gray-700">Manage multiple appointments</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <CreditCard className="text-blue-500 flex-shrink-0 mt-1" size={20} />
-                <span className="text-gray-700">Secure online payments</span>
               </div>
               <div className="flex items-start gap-3">
                 <Smartphone className="text-blue-500 flex-shrink-0 mt-1" size={20} />
@@ -217,10 +194,6 @@ export default function HowItWorks() {
                 </li>
                 <li className="flex items-start gap-3">
                   <CheckCircle2 size={20} className="text-yellow-500 mt-1 flex-shrink-0" />
-                  <span>Track payments and earnings</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 size={20} className="text-yellow-500 mt-1 flex-shrink-0" />
                   <span>Generate revenue reports</span>
                 </li>
               </ul>
@@ -238,10 +211,6 @@ export default function HowItWorks() {
               <div className="flex items-start gap-3">
                 <Calendar className="text-yellow-500 flex-shrink-0 mt-1" size={20} />
                 <span className="text-gray-700">Better schedule management</span>
-              </div>
-              <div className="flex items-start gap-3">
-                <CreditCard className="text-yellow-500 flex-shrink-0 mt-1" size={20} />
-                <span className="text-gray-700">Automated billing system</span>
               </div>
               <div className="flex items-start gap-3">
                 <Shield className="text-yellow-500 flex-shrink-0 mt-1" size={20} />
@@ -297,18 +266,6 @@ export default function HowItWorks() {
                 <li>• Cancel or reschedule if needed</li>
                 <li>• Track no-shows & cancellations</li>
                 <li>• Generate appointment reports</li>
-              </ul>
-            </div>
-
-            {/* Payment Management */}
-            <div className="bg-white rounded-lg p-8 shadow-md border-l-4 border-red-500">
-              <h3 className="text-2xl font-bold text-gray-800 mb-4">💳 Payment Control</h3>
-              <p className="text-gray-700 mb-4">Manage financial transactions:</p>
-              <ul className="space-y-2 text-gray-700">
-                <li>• View all payments & invoices</li>
-                <li>• Verify payment status</li>
-                <li>• Generate financial reports</li>
-                <li>• Commission management</li>
               </ul>
             </div>
           </div>

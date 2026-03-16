@@ -11,6 +11,7 @@ export default function PatientDashboard() {
   const [upcoming, setUpcoming] = useState([]);
   const [savedDoctors, setSavedDoctors] = useState([]);
   const [activity, setActivity] = useState([]);
+  const [reminders, setReminders] = useState([]);
   const auth = JSON.parse(localStorage.getItem("auth"));
   const user = auth?.user || null;
 
@@ -19,7 +20,9 @@ export default function PatientDashboard() {
     const fetchData = async () => {
       try {
         const res = await API.get("/appointments/my");
+        const remindersRes = await API.get("/appointments/my/reminders");
         const appts = res.data || [];
+        setReminders(remindersRes.data || []);
         setUpcoming(appts.slice(0, 4));
         setActivity([]);
         setSavedDoctors([]);
@@ -124,6 +127,21 @@ export default function PatientDashboard() {
                   <li key={i}>{a.doctor} {a.action} · <span className="text-gray-400">{a.timeAgo}</span></li>
                 ))}
               </ul>
+            )}
+          </div>
+
+          <div className="card p-4">
+            <h3 className="font-semibold mb-3">Reminders</h3>
+            {reminders.length === 0 ? (
+              <div className="muted text-sm">No active reminders</div>
+            ) : (
+              <div className="space-y-2 text-sm">
+                {reminders.slice(0, 4).map((item) => (
+                  <div key={item._id} className="p-2 rounded border border-blue-100 bg-blue-50 text-blue-700">
+                    Dr. {item.doctor?.user?.name || "Doctor"} • {item.date} {item.time}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>

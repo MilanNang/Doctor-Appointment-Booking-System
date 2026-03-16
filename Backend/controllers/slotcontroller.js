@@ -1,23 +1,35 @@
-import Slot from "../models/AppointmentSlot.js";
 import { resolveAvailability } from "../services/availabilityService.js";
+import Appointment from "../models/Appointment.js";
 
 export const getSlots = async (req, res) => {
-  const { doctorId, date } = req.params;
+  try {
+    const { doctorId, date } = req.params;
 
-  let slots = await Slot.find({ doctorId, date });
-
-  // 🧹 Self-healing: Remove malformed slots (missing startTime)
-  if (slots.some(s => !s.startTime)) {
-    await Slot.deleteMany({ doctorId, date, startTime: { $exists: false } });
-    slots = [];
-  }
-
-  if (slots.length === 0) {
     const generated = await resolveAvailability(doctorId, date);
-    slots = await Slot.insertMany(
-      generated.map(s => (typeof s === "string" ? { startTime: s, doctorId, date } : { ...s, doctorId, date }))
-    );
-  }
+    const bookedAppointments = await Appointment.find({
+      doctorId,
+      date,
+      status: { $nin: ["cancelled", "rejected", "no-show"] }
+    }).select("time");
 
-  res.json(slots.filter(s => !s.isBooked));
+    const bookedTimes = new Set(bookedAppointments.map((item) => item.time));
+
+    const slots = generated
+      .map((slot) => {
+        const startTime = typeof slot === "string" ? slot : slot.startTime;
+        return {
+          _id: `${doctorId}|${date}|${startTime}`,
+          doctorId,
+          date,
+          startTime,
+          endTime: typeof slot === "string" ? undefined : slot.endTime,
+          isBooked: bookedTimes.has(startTime)
+        };
+      })
+      .filter((slot) => !slot.isBooked);
+
+    res.json(slots);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };

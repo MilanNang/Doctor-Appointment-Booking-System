@@ -4,7 +4,12 @@ import { useNavigate } from "react-router-dom";
 import API from "../util/api";
 import { setDoctorProfile } from "../../Redux/doctorSlice";
 import { logout } from "../../Redux/authSlice";
-import { showToast } from "../../Redux/toastSlice";
+import {
+  appendDismissedNotificationIds,
+  buildStatusNotifications,
+  getDismissedNotificationIds
+} from "../../utils/statusNotifications";
+import { getInitials } from "../../utils/initials";
 
 export default function Header() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -32,12 +37,14 @@ export default function Header() {
     if (user?._id) fetchDoctor();
   }, [user, dispatch]);
 
-  // Fetch notifications
+  // Build notifications dynamically from appointment statuses
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const { data } = await API.get("/notifications");
-        setNotifications(data || []);
+        const { data } = await API.get("/appointments/doctor");
+        const allNotifications = buildStatusNotifications({ appointments: data || [], role: "doctor" });
+        const dismissedSet = getDismissedNotificationIds({ userId: user?._id, role: "doctor" });
+        setNotifications(allNotifications.filter((item) => !dismissedSet.has(item.eventId)));
       } catch (err) {
         console.error("Failed to fetch notifications", err);
       }
@@ -68,27 +75,14 @@ export default function Header() {
     navigate("/login");
   };
 
-  // Get initials if no profile image
-  const getInitial = (name) => {
-    if (!name) return "U";
-    return name.split(" ").map((n) => n[0]).join("").toUpperCase();
-  };
-
   const handleNotificationClick = async (notification) => {
-    // Mark as read locally immediately for better UX
-    if (!notification.isRead) {
-      setNotifications(
-        notifications.map((n) =>
-          n._id === notification._id ? { ...n, isRead: true } : n
-        )
-      );
-      // Then call API in the background
-      try {
-        await API.patch(`/notifications/${notification._id}/read`);
-      } catch (err) {
-        console.error("Failed to mark notification as read", err);
-      }
-    }
+    appendDismissedNotificationIds({
+      userId: user?._id,
+      role: "doctor",
+      ids: [notification.eventId]
+    });
+    setNotifications((prev) => prev.filter((item) => item.eventId !== notification.eventId));
+
     // Navigate if there's a link
     if (notification.link) navigate(notification.link);
   };
@@ -107,9 +101,9 @@ export default function Header() {
       <div className="flex items-center gap-6">
         {/* Notifications */}
         <div className="relative" ref={notificationRef}>
-          {notifications.filter(n => !n.isRead).length > 0 && (
+          {notifications.length > 0 && (
             <span className="absolute -top-2 -right-2 bg-yellow-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
-              {notifications.filter(n => !n.isRead).length}
+              {notifications.length}
             </span>
           )}
           <button
@@ -129,19 +123,13 @@ export default function Header() {
                     <li
                       key={n._id}
                       onClick={() => handleNotificationClick(n)}
-                      className={`px-4 py-3 text-sm cursor-pointer ${
-                        n.isRead
-                          ? "text-gray-500"
-                          : "bg-blue-50 font-medium text-gray-800"
-                      } hover:bg-yellow-50`}
+                      className="px-4 py-3 text-sm cursor-pointer bg-blue-50 font-medium text-gray-800 hover:bg-yellow-50"
                     >
                       <div className="flex items-start gap-3">
-                        {!n.isRead && (
-                          <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></div>
-                        )}
-                        <p className={n.isRead ? "pl-5" : ""}>{n.message}</p>
+                        <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></div>
+                        <p>{n.message}</p>
                       </div>
-                      <p className={`text-xs text-gray-400 mt-1 ${n.isRead ? "pl-5" : ""}`}>
+                      <p className="text-xs text-gray-400 mt-1">
                         {new Date(n.createdAt).toLocaleString()}
                       </p>
                     </li>
@@ -171,7 +159,7 @@ export default function Header() {
               />
             ) : (
               <div className="w-8 h-8 rounded-full bg-yellow-500 flex items-center justify-center text-white font-bold">
-                {getInitial(doctorProfile?.name || user?.name)}
+                {getInitials(doctorProfile?.name || user?.name)}
               </div>
             )}
 
@@ -198,14 +186,6 @@ export default function Header() {
                     className="w-full text-left block px-4 py-2 text-sm hover:bg-yellow-50"
                   >
                     Availability
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => navigate("/doctor/billing")}
-                    className="w-full text-left block px-4 py-2 text-sm hover:bg-yellow-50"
-                  >
-                    Billing
                   </button>
                 </li>
                 <li>

@@ -1,10 +1,15 @@
 import mongoose from "mongoose";
 
 const doctorSchema = new mongoose.Schema({
-  user: {
+  userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
+  },
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null,
   },
   // Professional Details
   medicalQualification: {
@@ -62,10 +67,29 @@ const doctorSchema = new mongoose.Schema({
     enum: ["pending", "approved", "rejected"],
     default: "pending",
   },
+  rejectionReason: {
+    type: String,
+    default: "",
+  },
+  reviewedAt: {
+    type: Date,
+    default: null,
+  },
+  reviewedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
   },
+}, { collection: "doctors" });
+
+doctorSchema.pre("validate", function (next) {
+  if (!this.userId && this.user) this.userId = this.user;
+  if (!this.user && this.userId) this.user = this.userId;
+  next();
 });
 
 export default mongoose.model("Doctor", doctorSchema);

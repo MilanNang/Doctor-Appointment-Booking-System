@@ -3,6 +3,7 @@ import express from "express";
 import {
   createOrUpdateDoctor,
   getAllDoctors,
+  getDoctorReviews,
   getDoctorById,
   updateAvailability,
   getDoctorDashboard,
@@ -52,6 +53,9 @@ router.get("/me", protect, doctorOnly, async (req, res) => {
 
 // Get complete doctor profile (with User data combined)
 router.get("/profile", protect, doctorOnly, getDoctorProfile);
+
+// Doctor reviews
+router.get("/:id/reviews", getDoctorReviews);
 
 // must come after /me and /dashboard
 router.get("/:id", getDoctorById);

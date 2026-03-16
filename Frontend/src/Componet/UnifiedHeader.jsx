@@ -4,6 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { Bell, LogOut, Loader2 } from "lucide-react";
 import API from "../pages/util/api";
 import { logout } from "../Redux/authSlice";
+import {
+  appendDismissedNotificationIds,
+  buildStatusNotifications,
+  getDismissedNotificationIds
+} from "../utils/statusNotifications";
+import { getInitials } from "../utils/initials";
 
 export default function UnifiedHeader() {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -29,37 +35,24 @@ export default function UnifiedHeader() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Fetch notifications
+  // Build notifications dynamically from appointment statuses
   useEffect(() => {
     fetchNotifications();
-    // Poll for new notifications every 10 seconds
-    const interval = setInterval(fetchNotifications, 10000);
+    // Poll for status changes every 20 seconds
+    const interval = setInterval(fetchNotifications, 20000);
     return () => clearInterval(interval);
   }, [user]);
 
   const fetchNotifications = async () => {
     try {
-      const res = await API.get("/notifications");
-      if (Array.isArray(res.data)) {
-        // Show last 5 notifications regardless of read status
-        setNotifications(res.data.slice(0, 5));
-      }
+      if (!user?.role) return;
+      const endpoint = user.role === "doctor" ? "/appointments/doctor" : "/appointments/my";
+      const res = await API.get(endpoint);
+      const allNotifications = buildStatusNotifications({ appointments: res.data || [], role: user.role }).slice(0, 5);
+      const dismissedSet = getDismissedNotificationIds({ userId: user?._id, role: user?.role });
+      setNotifications(allNotifications.filter((item) => !dismissedSet.has(item.eventId)));
     } catch (error) {
       console.log("Notifications not available");
-    }
-  };
-
-  const markAllAsRead = async () => {
-    const unread = notifications.filter((n) => !n.isRead);
-    if (unread.length === 0) return;
-
-    try {
-      await Promise.all(
-        unread.map((n) => API.patch(`/notifications/${n._id}/read`))
-      );
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    } catch (err) {
-      console.error("Failed to mark notifications read", err);
     }
   };
 
@@ -67,27 +60,22 @@ export default function UnifiedHeader() {
     if (notifications.length === 0) return;
 
     setIsClearing(true);
-    try {
-      await API.delete("/notifications");
-      setNotifications([]);
-    } catch (err) {
-      console.error("Failed to clear notifications", err);
-    } finally {
-      setIsClearing(false);
-    }
+    appendDismissedNotificationIds({
+      userId: user?._id,
+      role: user?.role,
+      ids: notifications.map((item) => item.eventId)
+    });
+    setNotifications([]);
+    setIsClearing(false);
   };
 
   const handleNotificationClick = async (notification) => {
-    if (!notification.isRead) {
-      try {
-        await API.patch(`/notifications/${notification._id}/read`);
-        setNotifications((prev) =>
-          prev.map((n) => (n._id === notification._id ? { ...n, isRead: true } : n))
-        );
-      } catch (err) {
-        console.error("Failed to mark notification as read", err);
-      }
-    }
+    appendDismissedNotificationIds({
+      userId: user?._id,
+      role: user?.role,
+      ids: [notification.eventId]
+    });
+    setNotifications((prev) => prev.filter((n) => n.eventId !== notification.eventId));
   };
 
   const handleLogout = async () => {
@@ -101,16 +89,7 @@ export default function UnifiedHeader() {
     }
   };
 
-  const getInitial = (name) => {
-    if (!name) return "U";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
-  };
-
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const unreadCount = notifications.length;
 
   return (
     <header className="flex items-center justify-between px-6 py-4 border-b bg-white shadow-sm sticky top-0 z-40">
@@ -147,14 +126,6 @@ export default function UnifiedHeader() {
                   Notifications
                 </h3>
                 <div className="flex gap-3">
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={markAllAsRead}
-                      className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                    >
-                      Mark all read
-                    </button>
-                  )}
                   {notifications.length > 0 && (
                     <button
                       onClick={performClearAll}
@@ -179,16 +150,12 @@ export default function UnifiedHeader() {
                     <div
                       key={idx}
                       onClick={() => handleNotificationClick(notif)}
-                      className={`p-4 border-b border-gray-100 cursor-pointer transition ${
-                        notif.isRead ? "bg-white hover:bg-gray-50" : "bg-blue-50 hover:bg-blue-100"
-                      }`}
+                      className="p-4 border-b border-gray-100 cursor-pointer transition bg-blue-50 hover:bg-blue-100"
                     >
                       <div className="flex items-start gap-2">
-                        {!notif.isRead && (
-                          <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
-                        )}
+                        <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
                         <div>
-                          <p className={`text-sm ${notif.isRead ? "text-gray-600" : "text-gray-900 font-medium"}`}>
+                          <p className="text-sm text-gray-900 font-medium">
                             {notif.message || "New notification"}
                           </p>
                           <p className="text-xs text-gray-500 mt-1">
@@ -213,7 +180,7 @@ export default function UnifiedHeader() {
         {/* Profile Avatar */}
         <div className="flex items-center gap-3 pl-4 border-l border-gray-100">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-600 shadow-md flex items-center justify-center text-white font-bold text-sm">
-            {getInitial(user?.name)}
+            {getInitials(user?.name)}
           </div>
           <div className="hidden sm:block">
             <p className="text-sm font-medium text-gray-800">{user?.name}</p>

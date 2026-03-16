@@ -18,6 +18,8 @@ const userSchema = new mongoose.Schema({
   isFirstLogin: { type: Boolean, default: false },    // Track first login after approval (for profile setup)
 }, { timestamps: true });
 
+userSchema.set("collection", "users");
+
 // Password encryption
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();

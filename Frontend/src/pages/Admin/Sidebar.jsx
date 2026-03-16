@@ -45,7 +45,6 @@ export default function AdminSidebar() {
         <SidebarLink to="/admin/doctors" icon={<Stethoscope size={20} />} label="Doctors" />
         <SidebarLink to="/admin/patients" icon={<Users size={20} />} label="Patients" />
         <SidebarLink to="/admin/appointments" icon={<CalendarDays size={20} />} label="Appointments" />
-        <SidebarLink to="/admin/payments" icon={<CreditCard size={20} />} label="Payments" />
         <SidebarLink to="/admin/report" icon={<FileText size={20} />} label="Reports" />
         <SidebarLink to="/admin/settings" icon={<Settings size={20} />} label="Settings" />
         

@@ -4,6 +4,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { setDoctorProfile } from "../../Redux/doctorSlice";
 import { showToast } from "../../Redux/toastSlice";
 import { useNavigate } from "react-router-dom";
+import { getInitials } from "../../utils/initials";
 
 const specializations = [
   "Cardiologists",
@@ -80,13 +81,13 @@ export default function DoctorProfile() {
   // Generate avatar from name
   const generateAvatar = (name) => {
     if (!name) return "";
-    const firstLetter = name.charAt(0).toUpperCase();
+    const initials = getInitials(name);
     const colors = [
       "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-pink-500",
       "bg-indigo-500", "bg-yellow-500", "bg-red-500", "bg-teal-500"
     ];
-    const colorIndex = firstLetter.charCodeAt(0) % colors.length;
-    return { letter: firstLetter, color: colors[colorIndex] };
+    const colorIndex = initials.charCodeAt(0) % colors.length;
+    return { letter: initials, color: colors[colorIndex] };
   };
 
   useEffect(() => {

@@ -6,6 +6,7 @@ import API from "../util/api";
 import { loginSuccess } from "../../Redux/authSlice";
 import { setPatientData } from "../../Redux/patientSlice";
 import { Link } from "react-router-dom";
+import Loader from "../../Componet/Loader";
 
 
 export default function Signup() {
@@ -17,6 +18,7 @@ export default function Signup() {
   const [verificationCode, setVerificationCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -29,15 +31,19 @@ export default function Signup() {
     }
 
     try {
+      setLoading(true);
       await API.post("/auth/register", { name, email, password, role: "patient" });
       setStage("verify");
     } catch (err) {
       dispatch(showToast({ message: err.response?.data?.message || "Signup failed", type: "error" }));
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleVerify = async () => {
     try {
+      setLoading(true);
       const res = await API.post("/auth/verify-email", { email, code: verificationCode });
 
       // Save user in Redux
@@ -45,11 +51,18 @@ export default function Signup() {
 
       // Navigate to patient dashboard
       dispatch(setPatientData(res.data));
-      navigate("/patient/browse-services");
+      dispatch(showToast({ message: "Account created successfully!", type: "success" }));
+      navigate("/patient/");
     } catch (err) {
       dispatch(showToast({ message: err.response?.data?.message || "Verification failed", type: "error" }));
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (loading) {
+    return <Loader />;
+  }
 
   if (stage === "verify") {
     return (
@@ -66,13 +79,15 @@ export default function Signup() {
             className="w-full mb-4 px-4 py-2 border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
             value={verificationCode}
             onChange={(e) => setVerificationCode(e.target.value)}
+            disabled={loading}
           />
 
           <button
-            className="w-full py-2.5 rounded-md font-semibold text-white bg-yellow-500 hover:bg-yellow-600"
+            className="w-full py-2.5 rounded-md font-semibold text-white bg-yellow-500 hover:bg-yellow-600 disabled:bg-yellow-300 disabled:cursor-not-allowed transition"
             onClick={handleVerify}
+            disabled={loading || !verificationCode.trim()}
           >
-            Verify Email
+            {loading ? "Verifying..." : "Verify Email"}
           </button>
         </div>
       </div>
@@ -135,10 +150,11 @@ export default function Signup() {
         </div>
 
         <button
-          className="w-full py-2.5 rounded-md font-semibold text-white bg-blue-500 hover:bg-blue-600 transition"
+          className="w-full py-2.5 rounded-md font-semibold text-white bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed transition"
           onClick={handleSignup}
+          disabled={loading}
         >
-          Create Account
+          {loading ? "Creating Account..." : "Create Account"}
         </button>
 
         <div className="mt-4 space-y-2">

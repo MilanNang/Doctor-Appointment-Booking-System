@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, Search, Calendar, BookOpen, User, Settings, LogOut } from "lucide-react";
+import { Home, Search, Calendar, BookOpen, User, Settings, LogOut, FileText } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../../Redux/authSlice";
 import API from "../util/api";
@@ -19,6 +19,7 @@ export default function PatientSidebar() {
     { path: "/patient/", label: "Dashboard", icon: <Home size={18} /> },
     { path: "/patient/browse-services", label: "Browse Doctors", icon: <Search size={18} /> },
     { path: "/patient/appointments", label: "My Appointments", icon: <BookOpen size={18} /> },
+    { path: "/patient/medical-history", label: "Medical History", icon: <FileText size={18} /> },
   ];
 
   // Close dropdown if click outside

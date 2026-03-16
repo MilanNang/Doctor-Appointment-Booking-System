@@ -2,6 +2,8 @@ import Doctor from "../models/Doctor.js";
 import User from "../models/User.js";
 import { uploadToCloudinary } from "../utils/cloudinary.js";
 import Appointment from "../models/Appointment.js";
+import DoctorAvailability from "../models/DoctorAvailability.js";
+import AppointmentReview from "../models/AppointmentReview.js";
 
 // --- Slot Generation Logic ---
 
@@ -207,6 +209,18 @@ export const createOrUpdateDoctor = async (req, res) => {
           parsedAvail.consultationDuration = 40;
           parsedAvail.bufferTime = 10;
           doctor.availability = parsedAvail;
+
+          await DoctorAvailability.findOneAndUpdate(
+            { doctorId: doctor._id },
+            {
+              doctorId: doctor._id,
+              weekly: parsedAvail.weekly || [],
+              exceptions: parsedAvail.exceptions || [],
+              consultationDuration: 40,
+              bufferTime: 10
+            },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+          );
         } catch (e) {
           console.log("⚠️  Could not parse availability, skipping");
           doctor.availability = {};
@@ -289,6 +303,18 @@ export const createOrUpdateDoctor = async (req, res) => {
           parsedAvail.consultationDuration = 40;
           parsedAvail.bufferTime = 10;
           doctor.availability = parsedAvail;
+
+          await DoctorAvailability.findOneAndUpdate(
+            { doctorId: doctor._id },
+            {
+              doctorId: doctor._id,
+              weekly: parsedAvail.weekly || [],
+              exceptions: parsedAvail.exceptions || [],
+              consultationDuration: 40,
+              bufferTime: 10
+            },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+          );
         } catch (e) {
           doctor.availability = {};
         }
@@ -376,6 +402,18 @@ export const updateAvailability = async (req, res) => {
       return res.status(404).json({ message: "Doctor profile not found" });
     }
 
+    await DoctorAvailability.findOneAndUpdate(
+      { doctorId: doctor._id },
+      {
+        doctorId: doctor._id,
+        weekly: availabilityData.weekly || [],
+        exceptions: availabilityData.exceptions || [],
+        consultationDuration: 40,
+        bufferTime: 10
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
     res.json({ success: true, availability: doctor.availability });
   } catch (err) {
     console.error(err);
@@ -414,6 +452,18 @@ export const manageAvailabilityException = async (req, res) => {
     // Mark mixed type as modified
     doctor.markModified("availability");
     await doctor.save();
+
+    await DoctorAvailability.findOneAndUpdate(
+      { doctorId: doctor._id },
+      {
+        doctorId: doctor._id,
+        weekly: doctor.availability.weekly || [],
+        exceptions: doctor.availability.exceptions || [],
+        consultationDuration: 40,
+        bufferTime: 10
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     res.json({
       success: true,
@@ -554,6 +604,37 @@ export const getAllDoctors = async (req, res) => {
     const approvedDoctors = doctors.filter(doc => doc.user !== null);
     
     res.json(approvedDoctors);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getDoctorReviews = async (req, res) => {
+  try {
+    const doctor = await Doctor.findById(req.params.id).select("_id");
+    if (!doctor) return res.status(404).json({ message: "Doctor not found" });
+
+    const reviews = await AppointmentReview.find({ doctorId: doctor._id })
+      .populate("patientId", "name")
+      .sort({ createdAt: -1 });
+
+    const totalReviews = reviews.length;
+    const averageRating = totalReviews
+      ? Number((reviews.reduce((sum, item) => sum + Number(item.rating || 0), 0) / totalReviews).toFixed(1))
+      : 0;
+
+    res.json({
+      doctorId: doctor._id,
+      averageRating,
+      totalReviews,
+      reviews: reviews.map((item) => ({
+        _id: item._id,
+        rating: item.rating,
+        comment: item.comment || "",
+        patientName: item.patientId?.name || "Anonymous",
+        createdAt: item.createdAt
+      }))
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

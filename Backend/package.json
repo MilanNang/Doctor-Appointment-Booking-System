@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node Server.js"
   },
   "type": "module",
   "keywords": [],
@@ -25,6 +25,7 @@
     "multer-storage-cloudinary": "^4.0.0",
     "nodemailer": "^7.0.6",
     "nodemon": "^3.1.10",
+    "pdfkit": "^0.17.2",
     "socket.io": "^4.8.3",
     "uuid": "^13.0.0"
   }

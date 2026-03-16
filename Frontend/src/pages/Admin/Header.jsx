@@ -1,6 +1,9 @@
 import { Bell, Search, ChevronDown } from "lucide-react";
+import { getInitials } from "../../utils/initials";
 
 export default function AdminHeader() {
+  const adminName = "Admin";
+
   return (
     <header className="flex items-center justify-between px-6 py-3 bg-white shadow-sm sticky top-0 z-50">
       {/* Left - Title */}
@@ -28,12 +31,10 @@ export default function AdminHeader() {
 
         {/* Profile */}
         <div className="flex items-center gap-2 cursor-pointer">
-          <img
-            src="https://i.pravatar.cc/40?img=1"
-            alt="Admin"
-            className="w-8 h-8 rounded-full border"
-          />
-          <span className="text-sm font-medium text-gray-700">Admin</span>
+          <div className="w-8 h-8 rounded-full border bg-blue-600 text-white flex items-center justify-center text-xs font-bold">
+            {getInitials(adminName)}
+          </div>
+          <span className="text-sm font-medium text-gray-700">{adminName}</span>
           <ChevronDown className="w-4 h-4 text-gray-500" />
         </div>
       </div>

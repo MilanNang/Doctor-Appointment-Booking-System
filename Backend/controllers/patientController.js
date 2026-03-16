@@ -1,14 +1,14 @@
 import Doctor from "../models/Doctor.js";
 import Appointment from "../models/Appointment.js";
 import { generateSlots } from "./doctorController.js";
-import Slot from "../models/AppointmentSlot.js";
+import DoctorAvailability from "../models/DoctorAvailability.js";
 
 // @desc   Get all approved doctors (browse/search)
 export const getAllDoctors = async (req, res) => {
   try {
     const { specialization, location } = req.query;
 
-    let query = { isApproved: true };
+    let query = { status: "approved" };
     if (specialization) query.specialization = specialization;
     if (location) query.location = location;
 
@@ -42,39 +42,61 @@ export const getDoctorAvailableSlots = async (req, res) => {
     const doctor = await Doctor.findById(doctorId);
     if (!doctor) return res.status(404).json({ message: "Doctor not found" });
 
-    // 1. Try to find existing slots in DB
-    let dbSlots = await Slot.find({ doctorId, date });
+    const availability = await DoctorAvailability.findOne({ doctorId });
+    const appointments = await Appointment.find({
+      doctorId,
+      date,
+      status: { $nin: ["cancelled", "rejected", "no-show"] }
+    }).select("time status");
 
-    // 🧹 Self-healing: Remove malformed slots
-    if (dbSlots.some(s => !s.startTime)) {
-        await Slot.deleteMany({ doctorId, date, startTime: { $exists: false } });
-        dbSlots = [];
-    }
+    let timeStrings = [];
+    if (availability) {
+      const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const dayName = days[new Date(date).getDay()];
+      const exception = (availability.exceptions || []).find((entry) => entry.date === date);
 
-    // 2. If no slots exist, generate and save them
-    if (dbSlots.length === 0) {
-        const appointments = await Appointment.find({
-            doctor: doctorId,
-            date: date,
-            status: { $nin: ['cancelled', 'rejected'] }
-        }).select('time status');
-
-        const timeStrings = generateSlots(doctor.availability || {}, date, appointments);
-
-        const newSlots = timeStrings.map(time => ({
-            doctorId,
+      if (exception) {
+        if (!exception.isUnavailable) {
+          timeStrings = generateSlots(
+            {
+              weekly: [],
+              exceptions: [
+                {
+                  date,
+                  isUnavailable: false,
+                  startTime: exception.startTime,
+                  endTime: exception.endTime,
+                  hasBreak: exception.hasBreak,
+                  breakStart: exception.breakStart,
+                  breakDuration: exception.breakDuration
+                }
+              ]
+            },
             date,
-            startTime: time,
-            isBooked: false
-        }));
-
-        if (newSlots.length > 0) {
-            dbSlots = await Slot.insertMany(newSlots);
+            appointments
+          );
         }
+      } else {
+        timeStrings = generateSlots(
+          {
+            weekly: (availability.weekly || []).filter((item) => item.day === dayName),
+            exceptions: []
+          },
+          date,
+          appointments
+        );
+      }
+    } else {
+      timeStrings = generateSlots(doctor.availability || {}, date, appointments);
     }
 
-    // 3. Return only available slots
-    let availableSlots = dbSlots.filter(s => !s.isBooked);
+    let availableSlots = timeStrings.map((time) => ({
+      _id: `${doctorId}|${date}|${time}`,
+      doctorId,
+      date,
+      startTime: time,
+      isBooked: false
+    }));
 
     // Filter out past slots
     const now = new Date();

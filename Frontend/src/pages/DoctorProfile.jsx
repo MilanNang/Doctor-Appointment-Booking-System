@@ -1,32 +1,42 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import { ArrowLeft, Calendar, Clock, MapPin, Award, Star } from "lucide-react";
 import Loader from "../Componet/Loader";
+import DoctorAvatar from "../Componet/DoctorAvatar";
+import { getCurrentUser, getStoredAuth } from "../utils/authHelpers";
 
 export default function DoctorProfilePage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [doctor, setDoctor] = useState(null);
+  const [reviewsData, setReviewsData] = useState({ averageRating: 0, totalReviews: 0, reviews: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const user = JSON.parse(localStorage.getItem("user"));
-  const token = user?.token;
+  const user = getCurrentUser();
+  const token = getStoredAuth()?.token;
+  const isPatientLayoutView = user?.role === "patient" && location.pathname.startsWith("/patient/");
 
   useEffect(() => {
     const fetchDoctor = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`http://localhost:5000/api/doctors/${id}`, {
+        const res = await axios.get(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"}/doctors/${id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const reviewsRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"}/doctors/${id}/reviews`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         setDoctor(res.data);
+        setReviewsData(reviewsRes.data || { averageRating: 0, totalReviews: 0, reviews: [] });
         setError(null);
       } catch (err) {
         console.error("Error fetching doctor:", err);
         setError(err.response?.data?.message || "Failed to load doctor profile");
         setDoctor(null);
+        setReviewsData({ averageRating: 0, totalReviews: 0, reviews: [] });
       } finally {
         setLoading(false);
       }
@@ -56,7 +66,7 @@ export default function DoctorProfilePage() {
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Doctor Not Found</h1>
           <p className="text-gray-600 mb-6">{error || "Unable to load doctor profile"}</p>
           <Link
-            to="/patient/browse-services"
+            to={user?.role === "patient" ? "/patient/browse-services" : "/browse-doctors"}
             className="inline-flex items-center gap-2 px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition"
           >
             <ArrowLeft size={20} />
@@ -69,22 +79,23 @@ export default function DoctorProfilePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
-      {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition"
-          >
-            <ArrowLeft size={20} />
-            <span>Back</span>
-          </button>
-          <div className="flex-1 text-center">
-            <h1 className="text-xl font-bold text-gray-800">Doctor Profile</h1>
+      {!isPatientLayoutView && (
+        <header className="bg-white border-b sticky top-0 z-50">
+          <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition"
+            >
+              <ArrowLeft size={20} />
+              <span>Back</span>
+            </button>
+            <div className="flex-1 text-center">
+              <h1 className="text-xl font-bold text-gray-800">Doctor Profile</h1>
+            </div>
+            <div className="w-20"></div>
           </div>
-          <div className="w-20"></div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Profile Content */}
       <div className="max-w-4xl mx-auto px-6 py-12">
@@ -92,11 +103,7 @@ export default function DoctorProfilePage() {
         <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl p-8 text-white mb-8">
           <div className="flex flex-col md:flex-row items-center gap-8">
             <div className="flex-shrink-0">
-              <img
-                src={doctor.profileImage || "/default-doctor.png"}
-                alt={doctor.user?.name}
-                className="w-40 h-40 rounded-full object-cover border-4 border-white shadow-lg"
-              />
+              <DoctorAvatar doctor={doctor} size="w-40 h-40" textClass="text-4xl" borderClass="border-4 border-white" />
             </div>
             <div className="flex-1 text-center md:text-left">
               <h1 className="text-4xl font-bold mb-2">{doctor.user?.name || "Doctor"}</h1>
@@ -108,7 +115,7 @@ export default function DoctorProfilePage() {
                 </div>
                 <div className="flex items-center gap-2 bg-white bg-opacity-20 px-4 py-2 rounded-lg">
                   <Star size={20} />
-                  <span>4.8 Rating (120 reviews)</span>
+                  <span>{reviewsData.averageRating.toFixed(1)} Rating ({reviewsData.totalReviews} reviews)</span>
                 </div>
               </div>
             </div>
@@ -240,6 +247,35 @@ export default function DoctorProfilePage() {
             </div>
           </div>
         )}
+
+        <div className="bg-white rounded-lg p-6 shadow-md mt-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <Star size={24} className="text-yellow-500" />
+            Reviews
+          </h2>
+
+          {reviewsData.reviews.length === 0 ? (
+            <p className="text-gray-500">No reviews yet</p>
+          ) : (
+            <div className="space-y-4">
+              {reviewsData.reviews.map((item) => (
+                <div key={item._id} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between gap-4 mb-2">
+                    <p className="font-semibold text-gray-900">{item.patientName}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 text-yellow-500">
+                        <Star size={16} className="fill-current" />
+                        <span className="text-sm font-semibold">{item.rating}/5</span>
+                      </div>
+                      <span className="text-xs text-gray-500">{new Date(item.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                  <p className="text-gray-700 text-sm">{item.comment || "No written feedback"}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

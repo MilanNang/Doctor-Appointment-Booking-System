@@ -1,7 +1,5 @@
 import User from "../models/User.js";
-import { sendEmail } from "../utils/sendEmail.js";
-import bcrypt from "bcryptjs";
-import generateToken from "../utils/generateToken.js";
+import Doctor from "../models/Doctor.js";
 
 // =======================
 // @desc   Step 1: Submit basic details
@@ -12,51 +10,54 @@ export const submitBasicDetails = async (req, res) => {
   try {
     const { fullName, age, email, mobileNumber, residentialAddress } = req.body;
 
-    // Validate required fields
     if (!fullName || !age || !email || !mobileNumber || !residentialAddress) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Check if email already exists in User model
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email, role: { $in: ["patient", "admin"] } });
     if (existingUser) {
       return res.status(400).json({ message: "Email already registered" });
     }
 
-    // Check if there's already a pending request for this email
-    const existingRequest = await DoctorRegistrationRequest.findOne({ 
-      email,
-      status: "pending"
-    });
-    if (existingRequest) {
-      return res.status(400).json({ message: "A registration request is already pending for this email" });
-    }
+    let user = await User.findOne({ email, role: "doctor" });
 
-    // Create or update registration request (only step 1 data)
-    let request = await DoctorRegistrationRequest.findOne({ email });
-    
-    if (request && request.status === "pending") {
-      // Update existing pending request
-      request.fullName = fullName;
-      request.age = age;
-      request.mobileNumber = mobileNumber;
-      request.residentialAddress = residentialAddress;
-      await request.save();
-    } else {
-      // Create new request
-      request = await DoctorRegistrationRequest.create({
-        fullName,
-        age,
+    if (!user) {
+      user = await User.create({
+        name: fullName,
         email,
+        password: `pending-${Date.now()}`,
+        role: "doctor",
+        isVerified: true,
+        isApproved: false,
+        age: Number(age),
         mobileNumber,
-        residentialAddress,
-        status: "pending",
+        residentialAddress
       });
+    } else {
+      if (user.isApproved) {
+        return res.status(400).json({ message: "Email already registered" });
+      }
+
+      user.name = fullName;
+      user.age = Number(age);
+      user.mobileNumber = mobileNumber;
+      user.residentialAddress = residentialAddress;
+      await user.save();
     }
 
-    res.status(200).json({ 
+    await Doctor.findOneAndUpdate(
+      { $or: [{ userId: user._id }, { user: user._id }] },
+      {
+        userId: user._id,
+        user: user._id,
+        status: "pending"
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    res.status(200).json({
       message: "Basic details saved successfully",
-      requestId: request._id 
+      requestId: user._id
     });
   } catch (error) {
     console.error("Error in submitBasicDetails:", error);
@@ -79,42 +80,42 @@ export const submitProfessionalDetails = async (req, res) => {
       yearsOfExperience,
       hospitalClinicName,
       hospitalClinicAddress,
-      fees,
+      fees
     } = req.body;
 
-    // Validate required fields
-    if (!email || !medicalQualification || !specialization || !medicalRegistrationId || 
-        !yearsOfExperience || !hospitalClinicName || !hospitalClinicAddress ||
-        fees === undefined) {
+    if (!email || !medicalQualification || !specialization || !medicalRegistrationId ||
+      !yearsOfExperience || !hospitalClinicName || !hospitalClinicAddress ||
+      fees === undefined) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Find the registration request
-    const request = await DoctorRegistrationRequest.findOne({ 
-      email,
-      status: "pending"
-    });
-
-    if (!request) {
+    const user = await User.findOne({ email, role: "doctor", isApproved: false });
+    if (!user) {
       return res.status(404).json({ message: "Registration request not found. Please complete step 1 first." });
     }
 
-    // Update with professional details
-    request.medicalQualification = medicalQualification;
-    request.specialization = specialization;
-    request.medicalRegistrationId = medicalRegistrationId;
-    request.yearsOfExperience = Number(yearsOfExperience);
-    request.hospitalClinicName = hospitalClinicName;
-    request.hospitalClinicAddress = hospitalClinicAddress;
-    request.fees = Number(fees);
-    request.status = "pending";
-    request.submittedAt = new Date();
+    const doctor = await Doctor.findOneAndUpdate(
+      { $or: [{ userId: user._id }, { user: user._id }] },
+      {
+        userId: user._id,
+        user: user._id,
+        medicalQualification,
+        specialization,
+        medicalRegistrationId,
+        yearsOfExperience: Number(yearsOfExperience),
+        hospitalClinicName,
+        hospitalClinicAddress,
+        fees: Number(fees),
+        experience: Number(yearsOfExperience),
+        location: hospitalClinicAddress,
+        status: "pending"
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
-    await request.save();
-
-    res.status(200).json({ 
+    res.status(200).json({
       message: "Your request has been sent to the admin. Please wait for approval.",
-      requestId: request._id 
+      requestId: doctor._id
     });
   } catch (error) {
     console.error("Error in submitProfessionalDetails:", error);
@@ -130,17 +131,20 @@ export const submitProfessionalDetails = async (req, res) => {
 export const getRegistrationStatus = async (req, res) => {
   try {
     const { email } = req.params;
-    const request = await DoctorRegistrationRequest.findOne({ email });
-    
-    if (!request) {
+    const user = await User.findOne({ email, role: "doctor" });
+
+    if (!user) {
       return res.status(404).json({ message: "No registration request found" });
     }
 
+    const doctor = await Doctor.findOne({ $or: [{ userId: user._id }, { user: user._id }] });
+    const status = user.isApproved ? "approved" : (doctor?.status || "pending");
+
     res.status(200).json({
-      status: request.status,
-      requestId: request._id,
-      submittedAt: request.submittedAt,
-      rejectionReason: request.rejectionReason,
+      status,
+      requestId: doctor?._id || user._id,
+      submittedAt: doctor?.updatedAt || user.updatedAt,
+      rejectionReason: doctor?.rejectionReason || ""
     });
   } catch (error) {
     console.error("Error in getRegistrationStatus:", error);

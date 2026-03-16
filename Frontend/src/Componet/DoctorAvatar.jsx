@@ -1,11 +1,12 @@
 import React, { useState } from "react";
+import { getInitials } from "../utils/initials";
 
-export default function DoctorAvatar({ doctor, size = "w-16 h-16" }) {
+export default function DoctorAvatar({ doctor, size = "w-16 h-16", textClass = "text-lg", borderClass = "border-2 border-yellow-400" }) {
   const [imageError, setImageError] = useState(false);
   
   const doctorName = doctor?.user?.name || doctor?.name || "D";
-  const avatarUrl = doctor?.user?.avatar || doctor?.avatar;
-  const firstLetter = doctorName.charAt(0).toUpperCase();
+  const avatarUrl = doctor?.profileImage || doctor?.user?.profileImage || doctor?.user?.avatar || doctor?.avatar || "";
+  const initials = getInitials(doctorName);
   
   // Color palette for initials
   const colors = [
@@ -29,16 +30,16 @@ export default function DoctorAvatar({ doctor, size = "w-16 h-16" }) {
         src={avatarUrl}
         alt={doctorName}
         onError={() => setImageError(true)}
-        className={`${size} rounded-full border-2 border-yellow-400 object-cover`}
+        className={`${size} rounded-full ${borderClass} object-cover`}
       />
     );
   }
 
   return (
     <div
-      className={`${size} rounded-full border-2 border-yellow-400 ${bgColor} flex items-center justify-center text-white font-bold text-lg`}
+      className={`${size} rounded-full ${borderClass} ${bgColor} flex items-center justify-center text-white font-bold ${textClass}`}
     >
-      {firstLetter}
+      {initials}
     </div>
   );
 }

@@ -2,10 +2,14 @@ import React, { useEffect, useState, useMemo } from "react";
 import { Search } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import { showToast } from "../../Redux/toastSlice";
+import { getCurrentUser } from "../../utils/authHelpers";
+import DoctorAvatar from "../../Componet/DoctorAvatar";
 
 export default function BrowseDoctors() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const [page, setPage] = useState(1);
   const [allDoctors, setAllDoctors] = useState([]);
@@ -23,11 +27,20 @@ export default function BrowseDoctors() {
     "Cardiologists",
   ];
 
-  const token = JSON.parse(localStorage.getItem("user"))?.token;
+  const auth = useMemo(() => {
+    try {
+      const raw = localStorage.getItem("auth");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const token = auth?.token;
 
   const api = useMemo(() => axios.create({
-    baseURL: "http://localhost:5000/api",
-    headers: { Authorization: `Bearer ${token}` },
+    baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
   }), [token]);
 
   // Fetch all doctors
@@ -72,10 +85,34 @@ export default function BrowseDoctors() {
   const doctorsToShow = filteredDoctors.slice(0, page * 6);
 
   const handleLoadMore = () => setPage(page + 1);
+  const currentUser = getCurrentUser();
+
+  const handleBookNow = (doctorId) => {
+    const user = currentUser;
+
+    if (!user) {
+      dispatch(showToast({
+        message: "Please sign in as patient to book an appointment",
+        type: "warning"
+      }));
+      navigate("/login");
+      return;
+    }
+
+    if (user.role !== "patient") {
+      dispatch(showToast({
+        message: "Only patients can book appointments",
+        type: "warning"
+      }));
+      return;
+    }
+
+    navigate(`/patient/calendar/${doctorId}`);
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white p-6 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+      <div className="max-w-7xl mx-auto p-6 md:p-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Browse Doctors</h1>
           <p className="text-gray-600">Find and book appointments with qualified healthcare professionals</p>
@@ -126,11 +163,7 @@ export default function BrowseDoctors() {
                 className="card overflow-hidden hover:shadow-lg transition"
               >
                 <div className="relative h-40 bg-gradient-to-br from-yellow-500 to-yellow-600 flex items-center justify-center">
-                  <img
-                    src={doc.profileImage || "/default-doctor.png"}
-                    alt={doc.user?.name}
-                    className="w-28 h-28 rounded-full object-cover border-4 border-white shadow-md"
-                  />
+                  <DoctorAvatar doctor={doc} size="w-28 h-28" textClass="text-2xl" borderClass="border-4 border-white" />
                 </div>
 
                 <div className="p-6">
@@ -155,16 +188,22 @@ export default function BrowseDoctors() {
 
                   <div className="flex gap-2">
                     <button
-                      onClick={() => navigate(`/doctor/${doc._id}`)}
+                      onClick={() =>
+                        navigate(
+                          currentUser?.role === "patient"
+                            ? `/patient/doctor/${doc._id}`
+                            : `/doctor/${doc._id}`
+                        )
+                      }
                       className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium text-sm"
                     >
                       View Profile
                     </button>
                     <button
-                      onClick={() => navigate(`/patient/calendar/${doc._id}`)}
+                      onClick={() => handleBookNow(doc._id)}
                       className="flex-1 px-4 py-2 btn-primary text-sm"
                     >
-                      Book Now
+                      {currentUser?.role === "patient" ? "Book Now" : "Login to Book"}
                     </button>
                   </div>
                 </div>

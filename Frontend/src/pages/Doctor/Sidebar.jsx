@@ -47,9 +47,7 @@ export default function Sidebar() {
 
         {/* Navigation */}
         <nav>
-          <h2 className="text-sm font-semibold text-gray-500 mb-3">
-            Navigation
-          </h2>
+        
           <ul className="space-y-3">
             {menu.map((item, i) => (
               <li key={i}>
