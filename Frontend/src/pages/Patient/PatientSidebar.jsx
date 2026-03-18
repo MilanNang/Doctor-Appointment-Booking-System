@@ -1,6 +1,16 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, Search, Calendar, BookOpen, User, Settings, LogOut, FileText } from "lucide-react";
+import {
+  Home,
+  Search,
+  BookOpen,
+  User,
+  Settings,
+  LogOut,
+  FileText,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { logout } from "../../Redux/authSlice";
 import API from "../util/api";
@@ -10,19 +20,18 @@ export default function PatientSidebar() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const dropdownRef = useRef(null);
-  
-  // Get user data from Redux
+
   const { user } = useSelector((state) => state.auth);
 
   const navItems = [
-    { path: "/patient/", label: "Dashboard", icon: <Home size={18} /> },
-    { path: "/patient/browse-services", label: "Browse Doctors", icon: <Search size={18} /> },
-    { path: "/patient/appointments", label: "My Appointments", icon: <BookOpen size={18} /> },
-    { path: "/patient/medical-history", label: "Medical History", icon: <FileText size={18} /> },
+    { path: "/patient/", label: "Dashboard", icon: <Home size={23} /> },
+    { path: "/patient/browse-services", label: "Browse Doctors", icon: <Search size={23} /> },
+    { path: "/patient/appointments", label: "My Appointments", icon: <BookOpen size={23} /> },
+    { path: "/patient/medical-history", label: "Medical History", icon: <FileText size={23} /> },
   ];
 
-  // Close dropdown if click outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -33,78 +42,290 @@ export default function PatientSidebar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Shared icon box size — logo square matches nav icon container
+  const ICON_SIZE = 36;
+
   return (
-    <aside className="w-64 min-h-screen bg-white border-r shadow-sm p-6 flex flex-col justify-between">
+    <aside
+      style={{
+        width: collapsed ? "112px" : "240px",
+        transition: "width 0.25s ease",
+        minHeight: "100vh",
+        background: "linear-gradient(180deg, #f0f7ff 0%, #ffffff 100%)",
+        borderRight: "1px solid #dbeafe",
+        boxShadow: "2px 0 12px rgba(59,130,246,0.07)",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        padding: "20px 14px",
+        fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
+        boxSizing: "border-box",
+      }}
+    >
       <div>
-        {/* Logo / Title */}
-        <div className="mb-10">
-          <h1 className="text-2xl font-bold text-yellow-600">Happy Health</h1>
-          <p className="text-sm text-slate-500">Patient Portal</p>
+        {/* ── TOP ROW: always a single horizontal row ── */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "28px",
+            gap: "9px",
+          }}
+        >
+          {collapsed ? (
+            /* Collapsed: logo square (same width as nav icons) + collapse btn */
+            <>
+              <div
+                style={{
+                  width: `${ICON_SIZE}px`,
+                  height: `${ICON_SIZE}px`,
+                  borderRadius: "10px",
+                  background: "linear-gradient(135deg, #2563eb, #38bdf8)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                  fontWeight: "800",
+                  fontSize: "17px",
+                  flexShrink: 0,
+                }}
+              >
+                H
+              </div>
+
+              <button
+                onClick={() => setCollapsed(false)}
+                title="Expand sidebar"
+                style={{
+                  width: "26px",
+                  height: "26px",
+                  borderRadius: "50%",
+                  background: "#2563eb",
+                  border: "2px solid #fff",
+                  boxShadow: "0 2px 8px rgba(37,99,235,0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  color: "#fff",
+                  flexShrink: 0,
+                  padding: 0,
+                }}
+              >
+                <ChevronRight size={13} />
+              </button>
+            </>
+          ) : (
+            /* Expanded: full logo text + collapse btn */
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                <div
+                  style={{
+                    width: "32px",
+                    height: "32px",
+                    borderRadius: "8px",
+                    background: "linear-gradient(135deg, #2563eb, #38bdf8)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#fff",
+                    fontWeight: "800",
+                    fontSize: "16px",
+                    flexShrink: 0,
+                  }}
+                >
+                  H
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <h1
+                    style={{
+                      fontSize: "15px",
+                      fontWeight: "700",
+                      color: "#1e3a5f",
+                      margin: 0,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    Happy Health
+                  </h1>
+                  <p style={{ fontSize: "10px", color: "#64748b", margin: 0 }}>Patient Portal</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setCollapsed(true)}
+                title="Collapse sidebar"
+                style={{
+                  width: "26px",
+                  height: "26px",
+                  borderRadius: "50%",
+                  background: "#2563eb",
+                  border: "2px solid #fff",
+                  boxShadow: "0 2px 8px rgba(37,99,235,0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  color: "#fff",
+                  flexShrink: 0,
+                  padding: 0,
+                }}
+              >
+                <ChevronLeft size={13} />
+              </button>
+            </>
+          )}
         </div>
 
-        {/* Navigation */}
-        <nav className="space-y-3">
-          {navItems.map((item, i) => (
-            <Link
-              key={i}
-              to={item.path}
-              className={`flex items-center gap-3 px-3 py-2 rounded-md transition ${
-                location.pathname === item.path
-                  ? "bg-yellow-100 text-yellow-700 font-medium"
-                  : "text-slate-700 hover:bg-yellow-50 hover:text-yellow-600"
-              }`}
-            >
-              {item.icon} {item.label}
-            </Link>
-          ))}
+        {/* Nav label — only when expanded */}
+        {!collapsed && (
+          <p
+            style={{
+              fontSize: "10px",
+              fontWeight: "600",
+              color: "#94a3b8",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              marginBottom: "6px",
+              paddingLeft: "10px",
+            }}
+          >
+            Main Menu
+          </p>
+        )}
+
+        {/* Navigation links */}
+        <nav style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+          {navItems.map((item, i) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={i}
+                to={item.path}
+                title={collapsed ? item.label : ""}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  /* When collapsed: left-align icon so it lines up with the logo square above */
+                  padding: collapsed ? "9px 7px" : "9px 12px",
+                  borderRadius: "10px",
+                  textDecoration: "none",
+                  justifyContent: "flex-start",
+                  background: isActive
+                    ? "linear-gradient(135deg, #2563eb 0%, #38bdf8 100%)"
+                    : "transparent",
+                  color: isActive ? "#ffffff" : "#334155",
+                  fontWeight: isActive ? "600" : "400",
+                  fontSize: "14px",
+                  boxShadow: isActive ? "0 4px 12px rgba(37,99,246,0.22)" : "none",
+                  transition: "all 0.18s ease",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = "#e0f0ff";
+                    e.currentTarget.style.color = "#2563eb";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.color = "#334155";
+                  }
+                }}
+              >
+                {/* Icon wrapper — fixed width matches logo square */}
+                <span
+                  style={{
+                    width: `${ICON_SIZE}px`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    opacity: isActive ? 1 : 0.65,
+                  }}
+                >
+                  {item.icon}
+                </span>
+                {!collapsed && <span>{item.label}</span>}
+              </Link>
+            );
+          })}
         </nav>
       </div>
 
-      {/* Bottom Account Dropdown */}
-      <div className="relative border-t pt-4" ref={dropdownRef}>
-        <button
-          onClick={() => setOpen(!open)}
-          className="flex items-center w-full space-x-3 p-2 rounded-md hover:bg-gray-50"
-        >
-          <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 font-bold">
-            {user?.name?.charAt(0)?.toUpperCase() || "P"}
-          </div>
-          <div className="flex-1 text-left">
-            <p className="text-sm font-semibold">{user?.name || "Patient"}</p>
-            <p className="text-xs text-gray-500 capitalize">{user?.role || "patient"}</p>
-          </div>
-          <svg
-            className={`w-4 h-4 transform transition ${open ? "rotate-180" : ""}`}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-
-        {/* Dropdown Menu */}
+      {/* ── Bottom: Account section ── */}
+      <div
+        ref={dropdownRef}
+        style={{
+          position: "relative",
+          borderTop: "1px solid #dbeafe",
+          paddingTop: "14px",
+        }}
+      >
+        {/* Dropdown — always above the button */}
         {open && (
-          <div className="absolute bottom-16 left-0 w-full bg-white border rounded-lg shadow-md">
-            <div className="px-4 py-2 text-sm font-semibold text-gray-500 border-b">
+          <div
+            style={{
+              position: "absolute",
+              bottom: "calc(100% + 8px)",
+              left: 0,
+              width: collapsed ? "180px" : "100%",
+              background: "#ffffff",
+              border: "1px solid #dbeafe",
+              borderRadius: "12px",
+              boxShadow: "0 -4px 20px rgba(37,99,235,0.1), 0 8px 24px rgba(0,0,0,0.08)",
+              zIndex: 9999,
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                padding: "10px 14px",
+                fontSize: "10px",
+                fontWeight: "700",
+                color: "#94a3b8",
+                borderBottom: "1px solid #f1f5f9",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+              }}
+            >
               My Account
             </div>
-            <Link
-              to="/patient/profile"
-              className="flex items-center gap-2 px-4 py-2 text-sm w-full hover:bg-gray-50"
-              onClick={() => setOpen(false)}
-            >
-              <User size={16} /> View Profile
-            </Link>
-            <Link
-              to="/patient/settings"
-              className="flex items-center gap-2 px-4 py-2 text-sm w-full hover:bg-gray-50"
-              onClick={() => setOpen(false)}
-            >
-              <Settings size={16} /> Account Settings
-            </Link>
-            <button 
+
+            {[
+              { to: "/patient/profile", icon: <User size={15} />, label: "View Profile" },
+          
+            ].map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={() => setOpen(false)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "9px",
+                  padding: "10px 14px",
+                  fontSize: "13px",
+                  color: "#334155",
+                  textDecoration: "none",
+                  transition: "background 0.15s",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#f0f7ff")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                {item.icon}
+                {item.label}
+              </Link>
+            ))}
+
+            <button
               onClick={async () => {
                 try {
                   await API.post("/auth/logout");
@@ -115,12 +336,112 @@ export default function PatientSidebar() {
                 navigate("/login");
                 setOpen(false);
               }}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 w-full hover:bg-red-50"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "9px",
+                padding: "10px 14px",
+                fontSize: "13px",
+                color: "#ef4444",
+                background: "transparent",
+                border: "none",
+                borderTop: "1px solid #f1f5f9",
+                width: "100%",
+                cursor: "pointer",
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#fff1f1")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
             >
-              <LogOut size={16} /> Logout
+              <LogOut size={15} />
+              Logout
             </button>
           </div>
         )}
+
+        {/* Avatar trigger button */}
+        <button
+          onClick={() => setOpen(!open)}
+          title={collapsed ? user?.name || "Patient" : ""}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            width: "100%",
+            padding: "8px 7px",
+            borderRadius: "10px",
+            border: "none",
+            background: open ? "#e0f0ff" : "transparent",
+            cursor: "pointer",
+            justifyContent: "flex-start",
+            transition: "background 0.15s",
+          }}
+          onMouseEnter={(e) => {
+            if (!open) e.currentTarget.style.background = "#e0f0ff";
+          }}
+          onMouseLeave={(e) => {
+            if (!open) e.currentTarget.style.background = "transparent";
+          }}
+        >
+          {/* Avatar — same fixed width as nav icons and logo */}
+          <div
+            style={{
+              width: `${ICON_SIZE}px`,
+              height: `${ICON_SIZE}px`,
+              borderRadius: "50%",
+              background: "linear-gradient(135deg, #2563eb, #38bdf8)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#fff",
+              fontWeight: "700",
+              fontSize: "14px",
+              flexShrink: 0,
+              boxShadow: "0 2px 8px rgba(37,99,235,0.25)",
+            }}
+          >
+            {user?.name?.charAt(0)?.toUpperCase() || "P"}
+          </div>
+
+          {!collapsed && (
+            <>
+              <div style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    color: "#1e3a5f",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {user?.name || "Patient"}
+                </p>
+                <p style={{ margin: 0, fontSize: "11px", color: "#64748b", textTransform: "capitalize" }}>
+                  {user?.role || "patient"}
+                </p>
+              </div>
+              <svg
+                style={{
+                  width: "14px",
+                  height: "14px",
+                  color: "#94a3b8",
+                  transform: open ? "rotate(180deg)" : "rotate(0deg)",
+                  transition: "transform 0.2s",
+                  flexShrink: 0,
+                }}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </>
+          )}
+        </button>
       </div>
     </aside>
   );

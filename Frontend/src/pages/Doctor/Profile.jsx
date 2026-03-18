@@ -1,699 +1,526 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import API from "../util/api";
 import { useSelector, useDispatch } from "react-redux";
 import { setDoctorProfile } from "../../Redux/doctorSlice";
 import { showToast } from "../../Redux/toastSlice";
 import { useNavigate } from "react-router-dom";
 import { getInitials } from "../../utils/initials";
+import {
+  User, Mail, Phone, MapPin, Hash, Clock, Building2,
+  IndianRupee, GraduationCap, Stethoscope, Camera,
+  ChevronDown, Check, Edit3, Save, X, Loader2,
+  CheckCircle2, ArrowLeft, AlertCircle,
+} from "lucide-react";
 
-const specializations = [
-  "Cardiologists",
-  "Pediatricians",
-  "Neurologists",
-  "Dermatologists",
-  "Dentists",
-  "General Physicians"
-];
+/* ─── constants ─── */
+const SPECIALIZATIONS = ["Cardiologists","Pediatricians","Neurologists","Dermatologists","Dentists","General Physicians"];
+const QUALIFICATIONS  = ["MBBS","BDS","MD","MS","Other"];
 
-const qualifications = [
-  "MBBS", "BDS", "MD", "MS", "Other"
-];
+/* ─── lazy reveal ─── */
+function useLazyReveal(threshold = 0.08) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    const io = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) { setVisible(true); io.disconnect(); } },
+      { threshold }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return [ref, visible];
+}
+function Reveal({ children, delay = 0, style = {} }) {
+  const [ref, v] = useLazyReveal();
+  return (
+    <div ref={ref} style={{ ...style, opacity: v?1:0, transform: v?"translateY(0)":"translateY(22px)", transition:`opacity .55s ${delay}ms ease,transform .55s ${delay}ms ease` }}>
+      {children}
+    </div>
+  );
+}
 
-// Calculate profile completion percentage
-const calculateCompletion = (profileData) => {
-  const fields = [
-    profileData.fullName,
-    profileData.email,
-    profileData.mobileNumber,
-    profileData.address,
-    (profileData.medicalQualification === 'Other' ? profileData.otherQualification : profileData.medicalQualification),
-    profileData.specialization,
-    profileData.medicalRegistrationId,
-    profileData.yearsOfExperience,
-    profileData.hospitalClinicName,
-    profileData.hospitalClinicAddress,
-    profileData.fees,
-    profileData.profileImage,
-  ];
-  const filledFields = fields.filter(field => field && field !== "" && field !== 0).length;
-  return Math.round((filledFields / fields.length) * 100);
+/* ─── custom dropdown ─── */
+function Dropdown({ label, icon, options, value, onChange, placeholder, required }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+  const LS = { display:"flex",alignItems:"center",gap:"5px",fontSize:"11px",fontWeight:"700",color:"#64748b",marginBottom:"6px",textTransform:"uppercase",letterSpacing:"0.06em" };
+  return (
+    <div ref={ref} style={{ position:"relative" }}>
+      <label style={LS}>{React.cloneElement(icon,{size:11})} {label}{required&&<span style={{color:"#ef4444",marginLeft:2}}>*</span>}</label>
+      <button type="button" onClick={()=>setOpen(!open)} style={{ width:"100%",padding:"11px 14px",borderRadius:"10px",border:open?"1px solid #93c5fd":"1px solid #dbeafe",background:open?"#eff6ff":"#f8faff",fontSize:"14px",color:value?"#1e3a5f":"#94a3b8",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer",fontFamily:"inherit",fontWeight:value?"600":"400",transition:"all .15s",boxSizing:"border-box" }}>
+        <div style={{display:"flex",alignItems:"center",gap:"8px"}}>{React.cloneElement(icon,{size:15,style:{color:"#60a5fa",flexShrink:0}})}{value||placeholder}</div>
+        <ChevronDown size={15} style={{color:"#94a3b8",transform:open?"rotate(180deg)":"rotate(0deg)",transition:"transform .2s",flexShrink:0}}/>
+      </button>
+      {open&&(
+        <div style={{position:"absolute",top:"calc(100% + 6px)",left:0,width:"100%",background:"#fff",borderRadius:"12px",border:"1px solid #dbeafe",boxShadow:"0 12px 32px rgba(37,99,235,.13)",zIndex:200,overflow:"hidden"}}>
+          <div style={{padding:"8px 12px",fontSize:"10px",fontWeight:"700",color:"#94a3b8",textTransform:"uppercase",letterSpacing:"0.08em",borderBottom:"1px solid #f1f5f9",background:"#fafcff"}}>{label}</div>
+          {options.map(opt=>{
+            const sel=value===opt;
+            return(
+              <button key={opt} type="button" onClick={()=>{onChange(opt);setOpen(false);}} style={{width:"100%",padding:"11px 14px",border:"none",borderBottom:"1px solid #f8faff",background:sel?"#eff6ff":"transparent",color:sel?"#2563eb":"#334155",fontSize:"13px",fontWeight:sel?"700":"400",cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",justifyContent:"space-between",fontFamily:"inherit",transition:"background .12s"}}
+                onMouseEnter={e=>{if(!sel)e.currentTarget.style.background="#f0f7ff";}}
+                onMouseLeave={e=>{if(!sel)e.currentTarget.style.background="transparent";}}>
+                {opt}{sel&&<Check size={14} style={{color:"#2563eb",flexShrink:0}}/>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── completion calc ─── */
+const calcCompletion = (p) => {
+  const fields=[p.fullName,p.email,p.mobileNumber,p.address,(p.medicalQualification==="Other"?p.otherQualification:p.medicalQualification),p.specialization,p.medicalRegistrationId,p.yearsOfExperience,p.hospitalClinicName,p.hospitalClinicAddress,p.fees,p.profileImage];
+  return Math.round(fields.filter(f=>f&&f!==""&&f!==0).length/fields.length*100);
 };
 
+/* ─── main component ─── */
 export default function DoctorProfile() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
 
-  const [editMode, setEditMode] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [editMode,  setEditMode]  = useState(false);
+  const [loading,   setLoading]   = useState(true);
+  const [saving,    setSaving]    = useState(false);
   const [isFirstLogin, setIsFirstLogin] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false); // success popup
 
   const [profile, setProfile] = useState({
-    // Personal Information
-    fullName: "",
-    email: "",
-    age: "",
-    mobileNumber: "",
-    address: "",
-    
-    // Professional Information
-    medicalQualification: "MBBS",
-    otherQualification: "",
-    specialization: "General Physicians",
-    medicalRegistrationId: "",
-    yearsOfExperience: "",
-    hospitalClinicName: "",
-    hospitalClinicAddress: "",
-    fees: "",
-    
-    // Profile Image
-    profileImage: "",
-    
-    // Status
-    status: "pending",
+    fullName:"",email:"",age:"",mobileNumber:"",address:"",
+    medicalQualification:"MBBS",otherQualification:"",
+    specialization:"General Physicians",medicalRegistrationId:"",
+    yearsOfExperience:"",hospitalClinicName:"",hospitalClinicAddress:"",
+    fees:"",profileImage:"",status:"pending",
   });
-
   const [previewImage, setPreviewImage] = useState("");
-  const [profileCompletion, setProfileCompletion] = useState(0);
+  const [completion,   setCompletion]   = useState(0);
 
-
-  // Generate avatar from name
-  const generateAvatar = (name) => {
-    if (!name) return "";
-    const initials = getInitials(name);
-    const colors = [
-      "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-pink-500",
-      "bg-indigo-500", "bg-yellow-500", "bg-red-500", "bg-teal-500"
-    ];
-    const colorIndex = initials.charCodeAt(0) % colors.length;
-    return { letter: initials, color: colors[colorIndex] };
-  };
-
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
+  useEffect(()=>{
+    if(!user?._id) return;
+    (async()=>{
+      try{
         setLoading(true);
-        const { data } = await API.get("/doctors/profile");
-        
-        const isKnownQualification = qualifications.includes(data.medicalQualification);
-        setProfile({
-          fullName: data.fullName || "",
-          email: data.email || "",
-          age: data.age || "",
-          mobileNumber: data.mobileNumber || "",
-          address: data.address || "",
-          medicalQualification: isKnownQualification ? (data.medicalQualification || "MBBS") : "Other",
-          otherQualification: isKnownQualification ? "" : (data.medicalQualification || ""),
-          specialization: data.specialization || "General Physicians",
-          medicalRegistrationId: data.medicalRegistrationId || "",
-          yearsOfExperience: data.yearsOfExperience || "",
-          hospitalClinicName: data.hospitalClinicName || "",
-          hospitalClinicAddress: data.hospitalClinicAddress || "",
-          fees: data.fees || data.consultationFeesOnline || data.consultationFeesOffline || "",
-          profileImage: data.profileImage || "",
-          status: data.status || "pending",
-        });
-        
-        setPreviewImage(data.profileImage || "");
-        setProfileCompletion(calculateCompletion(data));
+        const {data}=await API.get("/doctors/profile");
+        const known=QUALIFICATIONS.includes(data.medicalQualification);
+        const p={
+          fullName:data.fullName||"",email:data.email||"",age:data.age||"",
+          mobileNumber:data.mobileNumber||"",address:data.address||"",
+          medicalQualification:known?(data.medicalQualification||"MBBS"):"Other",
+          otherQualification:known?"":(data.medicalQualification||""),
+          specialization:data.specialization||"General Physicians",
+          medicalRegistrationId:data.medicalRegistrationId||"",
+          yearsOfExperience:data.yearsOfExperience||"",
+          hospitalClinicName:data.hospitalClinicName||"",
+          hospitalClinicAddress:data.hospitalClinicAddress||"",
+          fees:data.fees||data.consultationFeesOnline||data.consultationFeesOffline||"",
+          profileImage:data.profileImage||"",status:data.status||"pending",
+        };
+        setProfile(p); setPreviewImage(data.profileImage||""); setCompletion(calcCompletion(p));
         dispatch(setDoctorProfile(data));
-        
-        // Check if first login
-        if (user?.isFirstLogin) {
-          setIsFirstLogin(true);
-          dispatch(showToast({ 
-            message: "Welcome! Please complete your profile setup.", 
-            type: "info" 
-          }));
-        }
-      } catch (err) {
-        console.error("Error fetching profile:", err);
-        dispatch(showToast({ 
-          message: err.response?.data?.message || "Failed to load profile", 
-          type: "error" 
-        }));
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    if (user?._id) {
-      fetchProfile();
-    }
-  }, [user, dispatch]);
+        if(user?.isFirstLogin){ setIsFirstLogin(true); dispatch(showToast({message:"Welcome! Please complete your profile.",type:"info"})); }
+      }catch(err){ dispatch(showToast({message:err.response?.data?.message||"Failed to load profile",type:"error"})); }
+      finally{ setLoading(false); }
+    })();
+  },[user,dispatch]);
 
-  const handleChange = (field, value) => {
-    const updatedProfile = { ...profile, [field]: value };
-    setProfile(updatedProfile);
-    setProfileCompletion(calculateCompletion(updatedProfile));
+  const handleChange=(field,val)=>{
+    const up={...profile,[field]:val};
+    setProfile(up); setCompletion(calcCompletion(up));
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        dispatch(showToast({ 
-          message: "Image size must be less than 5MB", 
-          type: "error" 
-        }));
-        return;
-      }
-      
-      // Validate file type
-      if (!file.type.startsWith("image/")) {
-        dispatch(showToast({ 
-          message: "Please upload a valid image file", 
-          type: "error" 
-        }));
-        return;
-      }
-      
-      setProfile({ ...profile, profileImage: file });
-      setPreviewImage(URL.createObjectURL(file));
-    }
+  const handleFile=(e)=>{
+    const file=e.target.files[0]; if(!file)return;
+    if(file.size>5*1024*1024){dispatch(showToast({message:"Image must be under 5MB",type:"error"}));return;}
+    if(!file.type.startsWith("image/")){dispatch(showToast({message:"Please upload an image file",type:"error"}));return;}
+    setProfile({...profile,profileImage:file}); setPreviewImage(URL.createObjectURL(file));
   };
 
-  const handleSave = async () => {
-    // Age validation
-    if (Number(profile.age) < 20) {
-      dispatch(showToast({ message: "Age must be at least 20.", type: "error" }));
-      return;
-    }
-
-    // Validation
-    if (!profile.fullName || !profile.mobileNumber || !profile.address) {
-      dispatch(showToast({ 
-        message: "Please fill in all required personal information fields", 
-        type: "error" 
-      }));
-      return;
-    }
-
-    if (!profile.medicalQualification || !profile.specialization || 
-        !profile.yearsOfExperience || !profile.hospitalClinicName || 
-        !profile.hospitalClinicAddress) {
-      dispatch(showToast({ 
-        message: "Please fill in all required professional information fields", 
-        type: "error" 
-      }));
-      return;
-    }
-
-    if (profile.medicalQualification === 'Other' && !profile.otherQualification.trim()) {
-      dispatch(showToast({ message: 'Please specify your qualification', type: 'error' }));
-      return;
-    }
-
-    if (!profile.fees) {
-      dispatch(showToast({ 
-        message: "Please enter your consultation fee", 
-        type: "error" 
-      }));
-      return;
-    }
-
-    // Validate numeric fields
-    if (isNaN(profile.yearsOfExperience) || Number(profile.yearsOfExperience) < 0) {
-      dispatch(showToast({ 
-        message: "Years of experience must be a valid number", 
-        type: "error" 
-      }));
-      return;
-    }
-
-    if (isNaN(profile.fees) || Number(profile.fees) < 0) {
-      dispatch(showToast({ 
-        message: "Consultation fees must be a valid number", 
-        type: "error" 
-      }));
-      return;
-    }
-
+  const handleSave=async()=>{
+    if(Number(profile.age)<20){dispatch(showToast({message:"Age must be at least 20",type:"error"}));return;}
+    if(!profile.fullName||!profile.mobileNumber||!profile.address){dispatch(showToast({message:"Fill all required personal fields",type:"error"}));return;}
+    if(!profile.medicalQualification||!profile.specialization||!profile.yearsOfExperience||!profile.hospitalClinicName||!profile.hospitalClinicAddress){dispatch(showToast({message:"Fill all required professional fields",type:"error"}));return;}
+    if(profile.medicalQualification==="Other"&&!profile.otherQualification.trim()){dispatch(showToast({message:"Please specify your qualification",type:"error"}));return;}
+    if(!profile.fees){dispatch(showToast({message:"Enter your consultation fee",type:"error"}));return;}
     setSaving(true);
-    try {
-      const formData = new FormData();
-      
-      // Personal Information
-      formData.append("fullName", profile.fullName);
-      formData.append("mobileNumber", profile.mobileNumber);
-      formData.append("address", profile.address);
-      formData.append("age", profile.age);
-      
-      // Professional Information
-      if (profile.medicalQualification === 'Other') {
-        formData.append("medicalQualification", profile.otherQualification);
-      } else {
-        formData.append("medicalQualification", profile.medicalQualification);
+    try{
+      const fd=new FormData();
+      ["fullName","mobileNumber","address","age","specialization","yearsOfExperience","hospitalClinicName","hospitalClinicAddress","fees"].forEach(k=>fd.append(k,profile[k]));
+      fd.append("medicalQualification",profile.medicalQualification==="Other"?profile.otherQualification:profile.medicalQualification);
+      if(profile.profileImage instanceof File) fd.append("profileImage",profile.profileImage);
+      const res=await API.post("/doctors/profile",fd,{headers:{"Content-Type":"multipart/form-data"}});
+      if(res.data.doctor){
+        setProfile({...res.data.doctor}); setPreviewImage(res.data.doctor.profileImage||"");
+        setCompletion(calcCompletion(res.data.doctor)); dispatch(setDoctorProfile(res.data.doctor));
       }
-      formData.append("specialization", profile.specialization);
-      formData.append("yearsOfExperience", profile.yearsOfExperience);
-      formData.append("hospitalClinicName", profile.hospitalClinicName);
-      formData.append("hospitalClinicAddress", profile.hospitalClinicAddress);
-      formData.append("fees", profile.fees);
-      
-      // Only append image if it's a File object (not a string URL)
-      if (profile.profileImage && profile.profileImage instanceof File) {
-        formData.append("profileImage", profile.profileImage);
-      }
-
-      const response = await API.post("/doctors/profile", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      if (response.data.doctor) {
-        setProfile({ ...response.data.doctor });
-        setPreviewImage(response.data.doctor.profileImage || "");
-        setProfileCompletion(calculateCompletion(response.data.doctor));
-        dispatch(setDoctorProfile(response.data.doctor));
-        
-        // Clear first login flag after saving
-        if (isFirstLogin) {
-          try {
-            await API.post("/auth/clear-first-login");
-            setIsFirstLogin(false);
-          } catch (err) {
-            console.error("Failed to clear first login flag:", err);
-            // Continue anyway
-          }
-        }
-      }
-      
-      setEditMode(false);
-      dispatch(showToast({ message: "Profile saved successfully!", type: "success" }));
-      
-    } catch (err) {
-      console.error("Save error:", err);
-      const errorMessage = err.response?.data?.error || err.message || "Error saving profile";
-      dispatch(showToast({ message: errorMessage, type: "error" }));
-    } finally {
-      setSaving(false);
-    }
+      if(isFirstLogin){ try{await API.post("/auth/clear-first-login");setIsFirstLogin(false);}catch(_){} }
+      setEditMode(false); setShowSaveModal(true); // show success popup
+    }catch(err){ dispatch(showToast({message:err.response?.data?.error||"Error saving profile",type:"error"})); }
+    finally{ setSaving(false); }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading profile...</p>
-        </div>
-      </div>
-    );
-  }
+  /* ── shared input style ── */
+  const INP = { width:"100%",padding:"11px 14px 11px 40px",borderRadius:"10px",border:"1px solid #dbeafe",background:"#f8faff",fontSize:"14px",color:"#1e3a5f",outline:"none",boxSizing:"border-box",fontFamily:"inherit",transition:"border-color .15s" };
+  const LBL = { display:"flex",alignItems:"center",gap:"5px",fontSize:"11px",fontWeight:"700",color:"#64748b",marginBottom:"6px",textTransform:"uppercase",letterSpacing:"0.06em" };
 
-  const avatar = generateAvatar(profile.fullName);
-  const hasProfileImage = previewImage && previewImage !== "";
+  const FieldIcon=({icon,top=false})=>(
+    <span style={{position:"absolute",left:"12px",top:top?"14px":"50%",transform:top?"none":"translateY(-50%)",color:"#60a5fa",pointerEvents:"none"}}>{icon}</span>
+  );
+
+  /* ── view value display ── */
+  const ViewVal=({val,suffix=""})=>(
+    <p style={{margin:0,fontSize:"14px",color:val?"#1e3a5f":"#94a3b8",padding:"11px 0",fontWeight:val?"500":"400"}}>
+      {val?`${val}${suffix}`:"Not provided"}
+    </p>
+  );
+
+  if(loading) return (
+    <div style={{minHeight:"60vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'DM Sans','Segoe UI',sans-serif"}}>
+      <div style={{textAlign:"center"}}>
+        <div style={{width:"44px",height:"44px",borderRadius:"50%",border:"3px solid #dbeafe",borderTopColor:"#2563eb",animation:"spin .8s linear infinite",margin:"0 auto 12px"}}/>
+        <p style={{color:"#2563eb",fontSize:"14px",fontWeight:"500"}}>Loading profile...</p>
+        <style>{`@keyframes spin{to{transform:rotate(360deg);}}`}</style>
+      </div>
+    </div>
+  );
+
+  const hasImg=previewImage&&previewImage!=="";
+  const initials=getInitials(profile.fullName)||"D";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white p-4 md:p-6 lg:p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header with Profile Completion */}
-        <div className="mb-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+    <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#f0f7ff 0%,#ffffff 55%,#e8f4ff 100%)",padding:"28px",fontFamily:"'DM Sans','Segoe UI',sans-serif"}}>
+      <style>{`@keyframes spin{to{transform:rotate(360deg);}} @keyframes fadeIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}`}</style>
+
+      <div style={{maxWidth:"900px",margin:"0 auto",display:"flex",flexDirection:"column",gap:"22px"}}>
+
+        {/* ── PAGE HEADER ── */}
+        <Reveal delay={0}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:"16px"}}>
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900">Doctor Profile</h1>
-              <p className="text-gray-600 mt-2">Manage your professional information</p>
+              <h1 style={{margin:0,fontSize:"22px",fontWeight:"800",color:"#1e3a5f"}}>Doctor Profile</h1>
+              <p style={{margin:"4px 0 0",fontSize:"13px",color:"#64748b"}}>Manage your professional information</p>
             </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => (editMode ? handleSave() : setEditMode(true))}
-                disabled={saving}
-                className="px-6 py-2.5 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition font-medium disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {editMode ? (saving ? "Saving..." : "Save Changes") : "Edit Profile"}
-              </button>
-              {!editMode && (
-                <button
-                  onClick={() => navigate("/doctor")}
-                  className="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium"
-                >
-                  Back to Dashboard
-                </button>
+            <div style={{display:"flex",gap:"10px",flexWrap:"wrap"}}>
+              {!editMode?(
+                <>
+                  <button onClick={()=>setEditMode(true)} style={{padding:"10px 20px",borderRadius:"10px",background:"linear-gradient(135deg,#2563eb,#38bdf8)",color:"#fff",border:"none",fontWeight:"700",fontSize:"14px",cursor:"pointer",display:"flex",alignItems:"center",gap:"6px",fontFamily:"inherit",boxShadow:"0 4px 14px rgba(37,99,235,.28)"}}>
+                    <Edit3 size={15}/> Edit Profile
+                  </button>
+                  <button onClick={()=>navigate("/doctor")} style={{padding:"10px 18px",borderRadius:"10px",border:"1px solid #dbeafe",background:"#f8faff",color:"#64748b",fontWeight:"600",fontSize:"14px",cursor:"pointer",display:"flex",alignItems:"center",gap:"6px",fontFamily:"inherit",transition:"all .15s"}}
+                    onMouseEnter={e=>{e.currentTarget.style.background="#eff6ff";e.currentTarget.style.color="#2563eb";}}
+                    onMouseLeave={e=>{e.currentTarget.style.background="#f8faff";e.currentTarget.style.color="#64748b";}}>
+                    <ArrowLeft size={15}/> Dashboard
+                  </button>
+                </>
+              ):(
+                <>
+                  <button onClick={handleSave} disabled={saving} style={{padding:"10px 20px",borderRadius:"10px",background:saving?"#93c5fd":"linear-gradient(135deg,#2563eb,#38bdf8)",color:"#fff",border:"none",fontWeight:"700",fontSize:"14px",cursor:saving?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:"6px",fontFamily:"inherit",boxShadow:saving?"none":"0 4px 14px rgba(37,99,235,.28)"}}>
+                    {saving?<><Loader2 size={15} style={{animation:"spin .8s linear infinite"}}/>Saving...</>:<><Save size={15}/>Save Changes</>}
+                  </button>
+                  <button onClick={()=>{setEditMode(false);window.location.reload();}} style={{padding:"10px 18px",borderRadius:"10px",border:"1px solid #fecaca",background:"#fef2f2",color:"#dc2626",fontWeight:"600",fontSize:"14px",cursor:"pointer",display:"flex",alignItems:"center",gap:"6px",fontFamily:"inherit",transition:"all .15s"}}
+                    onMouseEnter={e=>e.currentTarget.style.background="#fee2e2"}
+                    onMouseLeave={e=>e.currentTarget.style.background="#fef2f2"}>
+                    <X size={15}/> Cancel
+                  </button>
+                </>
               )}
             </div>
           </div>
-          
-          {/* Profile Completion Indicator */}
-          <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">Profile Completion</span>
-              <span className="text-sm font-bold text-yellow-600">{profileCompletion}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-              <div
-                className="bg-yellow-500 h-2.5 rounded-full transition-all duration-300"
-                style={{ width: `${profileCompletion}%` }}
-              ></div>
-            </div>
-            {profileCompletion < 100 && (
-              <p className="text-xs text-gray-500 mt-2">
-                Complete your profile to improve visibility and patient trust
-              </p>
-            )}
-          </div>
-        </div>
+        </Reveal>
 
-        {/* First Login Welcome Banner */}
-        {isFirstLogin && (
-          <div className="mb-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <span className="text-2xl">👋</span>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-blue-800">Welcome! Complete Your Profile</h3>
-                <p className="mt-1 text-sm text-blue-700">
-                  Your registration data has been pre-filled. Please review and update your profile information.
-                </p>
+        {/* ── COMPLETION BAR ── */}
+        <Reveal delay={80}>
+          <div style={{background:"#fff",borderRadius:"16px",padding:"18px 22px",border:"1px solid #dbeafe",boxShadow:"0 2px 12px rgba(37,99,235,.06)"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"8px"}}>
+              <span style={{fontSize:"13px",fontWeight:"600",color:"#1e3a5f"}}>Profile Completion</span>
+              <span style={{fontSize:"14px",fontWeight:"800",color:completion===100?"#059669":"#2563eb"}}>{completion}%</span>
+            </div>
+            <div style={{height:"8px",background:"#f0f7ff",borderRadius:"10px",overflow:"hidden",border:"1px solid #dbeafe"}}>
+              <div style={{height:"100%",width:`${completion}%`,background:completion===100?"linear-gradient(90deg,#059669,#34d399)":"linear-gradient(90deg,#2563eb,#38bdf8)",borderRadius:"10px",transition:"width .8s ease"}}/>
+            </div>
+            {completion<100&&<p style={{margin:"6px 0 0",fontSize:"11px",color:"#94a3b8"}}>Complete your profile to improve visibility and patient trust</p>}
+            {completion===100&&<p style={{margin:"6px 0 0",fontSize:"11px",color:"#059669",fontWeight:"600"}}>✓ Profile complete — patients can see your full details</p>}
+          </div>
+        </Reveal>
+
+        {/* ── FIRST LOGIN BANNER ── */}
+        {isFirstLogin&&(
+          <Reveal delay={100}>
+            <div style={{background:"linear-gradient(135deg,#eff6ff,#dbeafe)",borderRadius:"14px",padding:"16px 20px",border:"1px solid #bfdbfe",display:"flex",alignItems:"flex-start",gap:"12px"}}>
+              <AlertCircle size={20} style={{color:"#2563eb",flexShrink:0,marginTop:2}}/>
+              <div>
+                <p style={{margin:0,fontSize:"14px",fontWeight:"700",color:"#1e3a5f"}}>Welcome! Complete Your Profile</p>
+                <p style={{margin:"4px 0 0",fontSize:"13px",color:"#3b5a8a"}}>Your registration data has been pre-filled. Please review and update your information.</p>
               </div>
             </div>
-          </div>
+          </Reveal>
         )}
 
-        {/* Profile Header Card */}
-        <div className="bg-white rounded-lg shadow-md p-6 md:p-8 mb-6">
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-            {/* Profile Picture */}
-            <div className="relative flex-shrink-0">
-              {hasProfileImage ? (
-                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-yellow-500 shadow-lg">
-                  <img
-                    src={previewImage}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ) : (
-                <div className={`w-32 h-32 rounded-full ${avatar.color} flex items-center justify-center text-white text-4xl font-bold shadow-lg border-4 border-yellow-500`}>
-                  {avatar.letter}
-                </div>
-              )}
-              {editMode && (
-                <label className="absolute bottom-0 right-0 bg-yellow-500 text-white rounded-full p-3 cursor-pointer hover:bg-yellow-600 transition shadow-lg">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 1 012-2h.93a2 2 1 001.664-.89l.812-1.22A2 2 1 0110.07 4h3.86a2 2 1 011.664.89l.812 1.22A2 2 1 0018.07 7H19a2 2 1 012 2v9a2 2 1 01-2 2H5a2 2 1 01-2-2V9z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <input
-                    type="file"
-                    className="hidden"
-                    onChange={handleFileChange}
-                    accept="image/jpeg,image/jpg,image/png"
-                  />
-                </label>
-              )}
-            </div>
+        {/* ── PROFILE HEADER CARD ── */}
+        <Reveal delay={120}>
+          <div style={{background:"#fff",borderRadius:"18px",padding:"28px",border:"1px solid #dbeafe",boxShadow:"0 2px 16px rgba(37,99,235,.07)"}}>
+            <div style={{display:"flex",alignItems:"center",gap:"24px",flexWrap:"wrap"}}>
 
-            {/* Profile Info */}
-            <div className="flex-1">
-              {editMode ? (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
-                    <input
-                      type="text"
-                      value={profile.fullName}
-                      onChange={(e) => handleChange("fullName", e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                      placeholder="Enter your full name"
-                    />
+              {/* Avatar */}
+              <div style={{position:"relative",flexShrink:0}}>
+                {hasImg?(
+                  <div style={{width:"96px",height:"96px",borderRadius:"50%",overflow:"hidden",border:"4px solid #2563eb",boxShadow:"0 6px 20px rgba(37,99,235,.25)"}}>
+                    <img src={previewImage} alt="Profile" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Specialization *</label>
-                    <select
-                      value={profile.specialization}
-                      onChange={(e) => handleChange("specialization", e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                    >
-                      <option value="">Select specialization...</option>
-                      {specializations.map((spec) => <option key={spec} value={spec}>{spec}</option>)}
-                    </select>
+                ):(
+                  <div style={{width:"96px",height:"96px",borderRadius:"50%",background:"linear-gradient(135deg,#2563eb,#38bdf8)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:"800",fontSize:"32px",border:"4px solid #fff",boxShadow:"0 6px 20px rgba(37,99,235,.25)"}}>
+                    {initials}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      profile.status === "approved" 
-                        ? "bg-green-100 text-green-800" 
-                        : "bg-yellow-100 text-yellow-800"
-                    }`}>
-                      {profile.status === "approved" ? "✓ Approved" : "Pending"}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <h2 className="text-3xl font-bold text-gray-900 mb-2">{profile.fullName || "Doctor Name"}</h2>
-                  <p className="text-xl text-yellow-600 font-semibold mb-4">{profile.specialization || "Specialization"}</p>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      profile.status === "approved" 
-                        ? "bg-green-100 text-green-800" 
-                        : "bg-yellow-100 text-yellow-800"
-                    }`}>
-                      {profile.status === "approved" ? "✓ Active" : "Pending Approval"}
-                    </span>
-                  </div>
-                  {!hasProfileImage && (
-                    <p className="text-sm text-gray-500 mt-3">
-                      💡 Upload a profile picture to improve your professional presence
-                    </p>
-                  )}
-                </div>
-              )}
+                )}
+                {editMode&&(
+                  <label style={{position:"absolute",bottom:0,right:0,width:"30px",height:"30px",borderRadius:"50%",background:"linear-gradient(135deg,#2563eb,#38bdf8)",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",border:"2px solid #fff",boxShadow:"0 2px 8px rgba(37,99,235,.3)"}}>
+                    <Camera size={14} style={{color:"#fff"}}/>
+                    <input type="file" style={{display:"none"}} onChange={handleFile} accept="image/jpeg,image/jpg,image/png"/>
+                  </label>
+                )}
+              </div>
+
+              {/* Info */}
+              <div style={{flex:1,minWidth:0}}>
+                <h2 style={{margin:"0 0 4px",fontSize:"20px",fontWeight:"800",color:"#1e3a5f"}}>{profile.fullName||"Doctor Name"}</h2>
+                <p style={{margin:"0 0 10px",fontSize:"14px",color:"#2563eb",fontWeight:"600"}}>{profile.specialization||"Specialization"}</p>
+                <span style={{display:"inline-flex",alignItems:"center",gap:"5px",padding:"4px 12px",borderRadius:"20px",fontSize:"12px",fontWeight:"700",
+                  background:profile.status==="approved"?"#ecfdf5":"#fffbeb",
+                  color:profile.status==="approved"?"#059669":"#d97706",
+                  border:profile.status==="approved"?"1px solid #a7f3d0":"1px solid #fde68a"}}>
+                  {profile.status==="approved"?"✓ Active":"⏳ Pending Approval"}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+        </Reveal>
 
-        {/* Personal Information Section */}
-        <div className="bg-white rounded-lg shadow-md p-6 md:p-8 mb-6">
-          <h3 className="text-2xl font-bold text-gray-900 mb-6">Personal Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Full Name {editMode && <span className="text-red-500">*</span>}
-              </label>
-              {editMode ? (
-                <input
-                  type="text"
-                  value={profile.fullName}
-                  onChange={(e) => handleChange("fullName", e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                  required
-                />
-              ) : (
-                <p className="text-gray-900 py-2.5">{profile.fullName || "Not provided"}</p>
-              )}
+        {/* ── PERSONAL INFORMATION ── */}
+        <Reveal delay={160}>
+          <div style={{background:"#fff",borderRadius:"18px",padding:"26px",border:"1px solid #dbeafe",boxShadow:"0 2px 16px rgba(37,99,235,.07)"}}>
+            <div style={{display:"flex",alignItems:"center",gap:"8px",marginBottom:"20px"}}>
+              <div style={{width:"30px",height:"30px",borderRadius:"8px",background:"#eff6ff",border:"1px solid #bfdbfe",display:"flex",alignItems:"center",justifyContent:"center",color:"#2563eb"}}><User size={14}/></div>
+              <h3 style={{margin:0,fontSize:"15px",fontWeight:"700",color:"#1e3a5f"}}>Personal Information</h3>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-              <p className="text-gray-600 py-2.5">{profile.email || "Not provided"}</p>
-              <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
-            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"18px"}}>
+              {/* Full Name */}
+              <div>
+                <label style={LBL}><User size={11}/> Full Name{editMode&&<span style={{color:"#ef4444",marginLeft:2}}>*</span>}</label>
+                {editMode?(
+                  <div style={{position:"relative"}}>
+                    <FieldIcon icon={<User size={15}/>}/>
+                    <input type="text" value={profile.fullName} onChange={e=>handleChange("fullName",e.target.value)} style={INP} onFocus={e=>e.target.style.borderColor="#93c5fd"} onBlur={e=>e.target.style.borderColor="#dbeafe"} placeholder="Dr. Full Name"/>
+                  </div>
+                ):<ViewVal val={profile.fullName}/>}
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mobile Number {editMode && <span className="text-red-500">*</span>}
-              </label>
-              {editMode ? (
-                <input
-                  type="tel"
-                  value={profile.mobileNumber}
-                  onChange={(e) => handleChange("mobileNumber", e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                  required
-                />
-              ) : (
-                <p className="text-gray-900 py-2.5">{profile.mobileNumber || "Not provided"}</p>
-              )}
-            </div>
+              {/* Email */}
+              <div>
+                <label style={LBL}><Mail size={11}/> Email Address</label>
+                <p style={{margin:0,fontSize:"14px",color:"#64748b",padding:"11px 0"}}>{profile.email||"Not provided"}</p>
+                <p style={{margin:0,fontSize:"11px",color:"#94a3b8"}}>Cannot be changed</p>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Age</label>
-              {editMode ? (
-                <input
-                  type="number"
-                  value={profile.age}
-                  onChange={(e) => handleChange("age", e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                  min="20"
-                />
-              ) : (
-                <p className="text-gray-900 py-2.5">{profile.age || "Not provided"}</p>
-              )}
-            </div>
+              {/* Mobile */}
+              <div>
+                <label style={LBL}><Phone size={11}/> Mobile Number{editMode&&<span style={{color:"#ef4444",marginLeft:2}}>*</span>}</label>
+                {editMode?(
+                  <div style={{position:"relative"}}>
+                    <FieldIcon icon={<Phone size={15}/>}/>
+                    <input type="tel" value={profile.mobileNumber} onChange={e=>handleChange("mobileNumber",e.target.value)} style={INP} onFocus={e=>e.target.style.borderColor="#93c5fd"} onBlur={e=>e.target.style.borderColor="#dbeafe"} placeholder="+91 98765 43210"/>
+                  </div>
+                ):<ViewVal val={profile.mobileNumber}/>}
+              </div>
 
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Address {editMode && <span className="text-red-500">*</span>}
-              </label>
-              {editMode ? (
-                <textarea
-                  value={profile.address}
-                  onChange={(e) => handleChange("address", e.target.value)}
-                  rows="3"
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                  required
-                />
-              ) : (
-                <p className="text-gray-900 py-2.5">{profile.address || "Not provided"}</p>
-              )}
+              {/* Age */}
+              <div>
+                <label style={LBL}><Hash size={11}/> Age</label>
+                {editMode?(
+                  <div style={{position:"relative"}}>
+                    <FieldIcon icon={<Hash size={15}/>}/>
+                    <input type="number" value={profile.age} onChange={e=>handleChange("age",e.target.value)} style={INP} min="20" onFocus={e=>e.target.style.borderColor="#93c5fd"} onBlur={e=>e.target.style.borderColor="#dbeafe"} placeholder="30"/>
+                  </div>
+                ):<ViewVal val={profile.age} suffix=" yrs"/>}
+              </div>
+
+              {/* Address */}
+              <div style={{gridColumn:"1/-1"}}>
+                <label style={LBL}><MapPin size={11}/> Address{editMode&&<span style={{color:"#ef4444",marginLeft:2}}>*</span>}</label>
+                {editMode?(
+                  <div style={{position:"relative"}}>
+                    <FieldIcon icon={<MapPin size={15}/>} top/>
+                    <textarea value={profile.address} onChange={e=>handleChange("address",e.target.value)} rows={3} style={{...INP,paddingTop:"12px",resize:"none",lineHeight:"1.6"}} onFocus={e=>e.target.style.borderColor="#93c5fd"} onBlur={e=>e.target.style.borderColor="#dbeafe"} placeholder="Your residential address"/>
+                  </div>
+                ):<ViewVal val={profile.address}/>}
+              </div>
             </div>
           </div>
-        </div>
+        </Reveal>
 
-        {/* Professional Information Section */}
-        <div className="bg-white rounded-lg shadow-md p-6 md:p-8 mb-6">
-          <h3 className="text-2xl font-bold text-gray-900 mb-6">Professional Information</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Medical Qualification {editMode && <span className="text-red-500">*</span>}
-              </label>
-              {editMode ? (
-                <>
-                  <select name="medicalQualification" value={profile.medicalQualification} onChange={(e) => handleChange("medicalQualification", e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 bg-white">
-                    {qualifications.map((q) => <option key={q} value={q}>{q}</option>)}
-                  </select>
-                  {profile.medicalQualification === "Other" && (
-                    <div className="mt-4 animate-in fade-in slide-in-from-top-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Please Specify Qualification</label>
-                      <input type="text" name="otherQualification" value={profile.otherQualification} onChange={(e) => handleChange("otherQualification", e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 outline-none" placeholder="Enter your qualification" required />
-                    </div>
-                  )}
-                </>
-              ) : (
-                <p className="text-gray-900 py-2.5">
-                  {profile.medicalQualification === 'Other' 
-                    ? profile.otherQualification 
-                    : profile.medicalQualification || "Not provided"}
-                </p>
-              )}
+        {/* ── PROFESSIONAL INFORMATION ── */}
+        <Reveal delay={200}>
+          <div style={{background:"#fff",borderRadius:"18px",padding:"26px",border:"1px solid #dbeafe",boxShadow:"0 2px 16px rgba(37,99,235,.07)"}}>
+            <div style={{display:"flex",alignItems:"center",gap:"8px",marginBottom:"20px"}}>
+              <div style={{width:"30px",height:"30px",borderRadius:"8px",background:"#eff6ff",border:"1px solid #bfdbfe",display:"flex",alignItems:"center",justifyContent:"center",color:"#2563eb"}}><Stethoscope size={14}/></div>
+              <h3 style={{margin:0,fontSize:"15px",fontWeight:"700",color:"#1e3a5f"}}>Professional Information</h3>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Specialization {editMode && <span className="text-red-500">*</span>}
-              </label>
-              {editMode ? (
-                <select
-                  value={profile.specialization}
-                  onChange={(e) => handleChange("specialization", e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                  required
-                >
-                  {specializations.map((spec) => <option key={spec} value={spec}>{spec}</option>)}
-                </select>
-              ) : (
-                <p className="text-gray-900 py-2.5">{profile.specialization || "Not provided"}</p>
-              )}
-            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"18px"}}>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Medical Registration / Doctor ID Number
-              </label>
-              <p className="text-gray-600 py-2.5">{profile.medicalRegistrationId || "Not provided"}</p>
-              <p className="text-xs text-gray-500 mt-1">This field cannot be changed</p>
-            </div>
+              {/* Qualification */}
+              <div>
+                {editMode?(
+                  <>
+                    <Dropdown label="Medical Qualification" icon={<GraduationCap/>} options={QUALIFICATIONS} value={profile.medicalQualification} onChange={v=>handleChange("medicalQualification",v)} placeholder="Select..." required/>
+                    {profile.medicalQualification==="Other"&&(
+                      <div style={{marginTop:"12px"}}>
+                        <label style={LBL}><GraduationCap size={11}/> Specify Qualification *</label>
+                        <div style={{position:"relative"}}>
+                          <FieldIcon icon={<GraduationCap size={15}/>}/>
+                          <input type="text" value={profile.otherQualification} onChange={e=>handleChange("otherQualification",e.target.value)} style={INP} placeholder="e.g. DM, MCh" onFocus={e=>e.target.style.borderColor="#93c5fd"} onBlur={e=>e.target.style.borderColor="#dbeafe"}/>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ):(
+                  <>
+                    <label style={LBL}><GraduationCap size={11}/> Medical Qualification</label>
+                    <ViewVal val={profile.medicalQualification==="Other"?profile.otherQualification:profile.medicalQualification}/>
+                  </>
+                )}
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Years of Experience {editMode && <span className="text-red-500">*</span>}
-              </label>
-              {editMode ? (
-                <input
-                  type="number"
-                  min="0"
-                  value={profile.yearsOfExperience}
-                  onChange={(e) => handleChange("yearsOfExperience", e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                  required
-                />
-              ) : (
-                <p className="text-gray-900 py-2.5">{profile.yearsOfExperience || "Not provided"} years</p>
-              )}
-            </div>
+              {/* Specialization */}
+              <div>
+                {editMode?(
+                  <Dropdown label="Specialization" icon={<Stethoscope/>} options={SPECIALIZATIONS} value={profile.specialization} onChange={v=>handleChange("specialization",v)} placeholder="Select..." required/>
+                ):(
+                  <>
+                    <label style={LBL}><Stethoscope size={11}/> Specialization</label>
+                    <ViewVal val={profile.specialization}/>
+                  </>
+                )}
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Hospital / Clinic Name {editMode && <span className="text-red-500">*</span>}
-              </label>
-              {editMode ? (
-                <input
-                  type="text"
-                  value={profile.hospitalClinicName}
-                  onChange={(e) => handleChange("hospitalClinicName", e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                  required
-                />
-              ) : (
-                <p className="text-gray-900 py-2.5">{profile.hospitalClinicName || "Not provided"}</p>
-              )}
-            </div>
+              {/* Registration ID — read only */}
+              <div>
+                <label style={LBL}><Hash size={11}/> Registration / Doctor ID</label>
+                <p style={{margin:0,fontSize:"14px",color:"#64748b",padding:"11px 0"}}>{profile.medicalRegistrationId||"Not provided"}</p>
+                <p style={{margin:0,fontSize:"11px",color:"#94a3b8"}}>Cannot be changed</p>
+              </div>
 
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Hospital / Clinic Address {editMode && <span className="text-red-500">*</span>}
-              </label>
-              {editMode ? (
-                <textarea
-                  value={profile.hospitalClinicAddress}
-                  onChange={(e) => handleChange("hospitalClinicAddress", e.target.value)}
-                  rows="3"
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                  required
-                />
-              ) : (
-                <p className="text-gray-900 py-2.5">{profile.hospitalClinicAddress || "Not provided"}</p>
-              )}
-            </div>
+              {/* Years of Experience */}
+              <div>
+                <label style={LBL}><Clock size={11}/> Years of Experience{editMode&&<span style={{color:"#ef4444",marginLeft:2}}>*</span>}</label>
+                {editMode?(
+                  <div style={{position:"relative"}}>
+                    <FieldIcon icon={<Clock size={15}/>}/>
+                    <input type="number" min="0" value={profile.yearsOfExperience} onChange={e=>handleChange("yearsOfExperience",e.target.value)} style={INP} onFocus={e=>e.target.style.borderColor="#93c5fd"} onBlur={e=>e.target.style.borderColor="#dbeafe"} placeholder="5"/>
+                  </div>
+                ):<ViewVal val={profile.yearsOfExperience} suffix=" years"/>}
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Consultation Fees ₹ {editMode && <span className="text-red-500">*</span>}
-              </label>
-              {editMode ? (
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={profile.fees}
-                  onChange={(e) => handleChange("fees", e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                  required
-                />
-              ) : (
-                <p className="text-gray-900 py-2.5">₹{profile.fees || "Not provided"}</p>
-              )}
+              {/* Hospital Name */}
+              <div>
+                <label style={LBL}><Building2 size={11}/> Hospital / Clinic Name{editMode&&<span style={{color:"#ef4444",marginLeft:2}}>*</span>}</label>
+                {editMode?(
+                  <div style={{position:"relative"}}>
+                    <FieldIcon icon={<Building2 size={15}/>}/>
+                    <input type="text" value={profile.hospitalClinicName} onChange={e=>handleChange("hospitalClinicName",e.target.value)} style={INP} onFocus={e=>e.target.style.borderColor="#93c5fd"} onBlur={e=>e.target.style.borderColor="#dbeafe"} placeholder="City General Hospital"/>
+                  </div>
+                ):<ViewVal val={profile.hospitalClinicName}/>}
+              </div>
+
+              {/* Fees */}
+              <div>
+                <label style={LBL}><IndianRupee size={11}/> Consultation Fees (₹){editMode&&<span style={{color:"#ef4444",marginLeft:2}}>*</span>}</label>
+                {editMode?(
+                  <div style={{position:"relative"}}>
+                    <FieldIcon icon={<IndianRupee size={15}/>}/>
+                    <input type="number" min="0" value={profile.fees} onChange={e=>handleChange("fees",e.target.value)} style={INP} onFocus={e=>e.target.style.borderColor="#93c5fd"} onBlur={e=>e.target.style.borderColor="#dbeafe"} placeholder="500"/>
+                  </div>
+                ):<ViewVal val={profile.fees?`₹${profile.fees}`:""}/>}
+              </div>
+
+              {/* Hospital Address */}
+              <div style={{gridColumn:"1/-1"}}>
+                <label style={LBL}><MapPin size={11}/> Hospital / Clinic Address{editMode&&<span style={{color:"#ef4444",marginLeft:2}}>*</span>}</label>
+                {editMode?(
+                  <div style={{position:"relative"}}>
+                    <FieldIcon icon={<MapPin size={15}/>} top/>
+                    <textarea value={profile.hospitalClinicAddress} onChange={e=>handleChange("hospitalClinicAddress",e.target.value)} rows={3} style={{...INP,paddingTop:"12px",resize:"none",lineHeight:"1.6"}} onFocus={e=>e.target.style.borderColor="#93c5fd"} onBlur={e=>e.target.style.borderColor="#dbeafe"} placeholder="Hospital full address"/>
+                  </div>
+                ):<ViewVal val={profile.hospitalClinicAddress}/>}
+              </div>
             </div>
           </div>
-        </div>
+        </Reveal>
 
-        {/* Action Buttons */}
-        {editMode && (
-          <div className="flex justify-end gap-4 mb-6">
-            <button
-              onClick={() => {
-                setEditMode(false);
-                // Reload profile to reset changes
-                window.location.reload();
-              }}
-              className="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-6 py-2.5 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition font-medium disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {saving ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
+        {/* ── SAVE BOTTOM BAR (edit mode) ── */}
+        {editMode&&(
+          <Reveal delay={0}>
+            <div style={{display:"flex",justifyContent:"flex-end",gap:"12px"}}>
+              <button onClick={()=>{setEditMode(false);window.location.reload();}} style={{padding:"13px 24px",borderRadius:"12px",border:"1px solid #fecaca",background:"#fef2f2",color:"#dc2626",fontSize:"14px",fontWeight:"600",cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}
+                onMouseEnter={e=>e.currentTarget.style.background="#fee2e2"}
+                onMouseLeave={e=>e.currentTarget.style.background="#fef2f2"}>
+                <X size={15} style={{marginRight:6,verticalAlign:"middle"}}/> Cancel
+              </button>
+              <button onClick={handleSave} disabled={saving} style={{padding:"13px 28px",borderRadius:"12px",border:"none",background:saving?"#93c5fd":"linear-gradient(135deg,#2563eb,#38bdf8)",color:"#fff",fontSize:"14px",fontWeight:"700",cursor:saving?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:"8px",fontFamily:"inherit",boxShadow:saving?"none":"0 6px 20px rgba(37,99,235,.3)"}}>
+                {saving?<><Loader2 size={16} style={{animation:"spin .8s linear infinite"}}/>Saving...</>:<><Save size={16}/>Save Changes</>}
+              </button>
+            </div>
+          </Reveal>
         )}
       </div>
+
+      {/* ══ SUCCESS POPUP MODAL ══ */}
+      {showSaveModal&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",backdropFilter:"blur(6px)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px"}}>
+          <div style={{width:"100%",maxWidth:"400px",background:"#fff",borderRadius:"24px",padding:"36px 32px",textAlign:"center",boxShadow:"0 24px 64px rgba(0,0,0,.2)",border:"1px solid #dbeafe",animation:"fadeIn .3s ease"}}>
+
+            {/* Icon */}
+            <div style={{width:"68px",height:"68px",borderRadius:"50%",background:"linear-gradient(135deg,#ecfdf5,#d1fae5)",border:"2px solid #a7f3d0",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 18px",boxShadow:"0 6px 20px rgba(5,150,105,.15)"}}>
+              <CheckCircle2 size={34} style={{color:"#059669"}}/>
+            </div>
+
+            <h2 style={{margin:"0 0 8px",fontSize:"20px",fontWeight:"800",color:"#1e3a5f"}}>Profile Saved!</h2>
+            <p style={{margin:"0 0 24px",fontSize:"14px",color:"#64748b",lineHeight:1.6}}>
+              Your profile has been updated successfully. Patients can now see your latest information.
+            </p>
+
+            {/* Completion pill */}
+            <div style={{background:"linear-gradient(135deg,#eff6ff,#dbeafe)",borderRadius:"12px",padding:"12px 16px",border:"1px solid #bfdbfe",marginBottom:"24px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"6px"}}>
+                <span style={{fontSize:"12px",fontWeight:"600",color:"#1e3a5f"}}>Profile Completion</span>
+                <span style={{fontSize:"13px",fontWeight:"800",color:completion===100?"#059669":"#2563eb"}}>{completion}%</span>
+              </div>
+              <div style={{height:"6px",background:"rgba(37,99,235,.1)",borderRadius:"10px",overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${completion}%`,background:completion===100?"linear-gradient(90deg,#059669,#34d399)":"linear-gradient(90deg,#2563eb,#38bdf8)",borderRadius:"10px"}}/>
+              </div>
+            </div>
+
+            <div style={{display:"flex",gap:"10px"}}>
+              <button onClick={()=>{setShowSaveModal(false);navigate("/doctor");}} style={{flex:1,padding:"12px",borderRadius:"12px",border:"1px solid #dbeafe",background:"#f8faff",color:"#64748b",fontWeight:"600",fontSize:"14px",cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}
+                onMouseEnter={e=>{e.currentTarget.style.background="#eff6ff";e.currentTarget.style.color="#2563eb";}}
+                onMouseLeave={e=>{e.currentTarget.style.background="#f8faff";e.currentTarget.style.color="#64748b";}}>
+                Dashboard
+              </button>
+              <button onClick={()=>setShowSaveModal(false)} style={{flex:2,padding:"12px",borderRadius:"12px",border:"none",background:"linear-gradient(135deg,#2563eb,#38bdf8)",color:"#fff",fontWeight:"700",fontSize:"14px",cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 14px rgba(37,99,235,.3)"}}>
+                Continue Editing
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

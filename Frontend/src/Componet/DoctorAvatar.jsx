@@ -1,45 +1,45 @@
-import React, { useState } from "react";
-import { getInitials } from "../utils/initials";
+import React from "react";
 
-export default function DoctorAvatar({ doctor, size = "w-16 h-16", textClass = "text-lg", borderClass = "border-2 border-yellow-400" }) {
-  const [imageError, setImageError] = useState(false);
-  
-  const doctorName = doctor?.user?.name || doctor?.name || "D";
-  const avatarUrl = doctor?.profileImage || doctor?.user?.profileImage || doctor?.user?.avatar || doctor?.avatar || "";
-  const initials = getInitials(doctorName);
-  
-  // Color palette for initials
-  const colors = [
-    "bg-blue-500",
-    "bg-green-500",
-    "bg-red-500",
-    "bg-purple-500",
-    "bg-pink-500",
-    "bg-indigo-500",
-    "bg-teal-500",
-    "bg-cyan-500",
-  ];
-  
-  // Consistent color based on doctor name
-  const colorIndex = doctorName.charCodeAt(0) % colors.length;
-  const bgColor = colors[colorIndex];
+export default function DoctorAvatar({
+  doctor,
+  size = "w-24 h-24",
+  textClass = "text-xl",
+  borderClass = "",
+}) {
+  const name = doctor?.user?.name || "Doctor";
 
-  if (avatarUrl && !imageError) {
-    return (
-      <img
-        src={avatarUrl}
-        alt={doctorName}
-        onError={() => setImageError(true)}
-        className={`${size} rounded-full ${borderClass} object-cover`}
-      />
-    );
-  }
+  // GET INITIALS (First + Last)
+  const getInitials = (name) => {
+    const parts = name.trim().split(" ");
+    if (parts.length === 1) {
+      return parts[0][0];
+    }
+    return parts[0][0] + parts[parts.length - 1][0];
+  };
+
+  const initials = getInitials(name).toUpperCase();
+
+  // CHECK IMAGE
+  const hasImage = doctor?.image;
 
   return (
     <div
-      className={`${size} rounded-full ${borderClass} ${bgColor} flex items-center justify-center text-white font-bold ${textClass}`}
+      className={`${size} rounded-full flex items-center justify-center font-bold ${borderClass}`}
     >
-      {initials}
+      {hasImage ? (
+        <img
+          src={doctor.image}
+          alt={name}
+          className="w-full h-full object-cover rounded-full"
+        />
+      ) : (
+        <div
+          className={`w-full h-full flex items-center justify-center rounded-full 
+          bg-blue-600 text-white ${textClass}`}
+        >
+          {initials}
+        </div>
+      )}
     </div>
   );
 }

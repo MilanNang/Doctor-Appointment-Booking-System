@@ -21,13 +21,9 @@ export default function UnifiedHeader() {
 
   const { user } = useSelector((state) => state.auth);
 
-  // Close notification dropdown on outside click
   useEffect(() => {
     function handleClickOutside(event) {
-      if (
-        notificationRef.current &&
-        !notificationRef.current.contains(event.target)
-      ) {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
         setIsNotificationOpen(false);
       }
     }
@@ -35,10 +31,8 @@ export default function UnifiedHeader() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Build notifications dynamically from appointment statuses
   useEffect(() => {
     fetchNotifications();
-    // Poll for status changes every 20 seconds
     const interval = setInterval(fetchNotifications, 20000);
     return () => clearInterval(interval);
   }, [user]);
@@ -58,7 +52,6 @@ export default function UnifiedHeader() {
 
   const performClearAll = async () => {
     if (notifications.length === 0) return;
-
     setIsClearing(true);
     appendDismissedNotificationIds({
       userId: user?._id,
@@ -92,27 +85,28 @@ export default function UnifiedHeader() {
   const unreadCount = notifications.length;
 
   return (
-    <header className="flex items-center justify-between px-6 py-4 border-b bg-white shadow-sm sticky top-0 z-40">
+    <header className="flex items-center justify-between px-6 py-4 border-b border-blue-100 bg-gradient-to-r from-white via-blue-50 to-blue-100 shadow-sm sticky top-0 z-40">
       {/* Left: Welcome message */}
       <div>
-        <h1 className="text-lg font-semibold text-gray-800">
+        <h1 className="text-lg font-semibold text-slate-700">
           Welcome back,{" "}
-          <span className="text-yellow-600">{user?.name || "User"}!</span>
+          <span className="text-blue-600">{user?.name || "User"}!</span>
         </h1>
-        <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
+        <p className="text-xs text-slate-400 capitalize">{user?.role}</p>
       </div>
 
-      {/* Right: Notifications + Profile */}
-      <div className="flex items-center gap-6">
+      {/* Right: Notifications + Profile + Logout */}
+      <div className="flex items-center gap-5">
+
         {/* Notification Bell */}
         <div className="relative" ref={notificationRef}>
           <button
             onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-            className="relative p-2 rounded-full hover:bg-gray-100 transition"
+            className="relative w-9 h-9 rounded-full bg-white border border-blue-100 shadow-sm flex items-center justify-center hover:bg-blue-50 transition"
           >
-            <Bell size={20} className="text-gray-600" />
+            <Bell size={18} className="text-blue-500" />
             {unreadCount > 0 && (
-              <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-yellow-500 rounded-full">
+              <span className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center text-xs font-bold text-white bg-blue-500 rounded-full">
                 {unreadCount}
               </span>
             )}
@@ -120,24 +114,22 @@ export default function UnifiedHeader() {
 
           {/* Notification Dropdown */}
           {isNotificationOpen && (
-            <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
-                <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 className="text-sm font-semibold text-gray-800">
-                  Notifications
-                </h3>
+            <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-blue-100 z-50">
+              <div className="p-4 border-b border-blue-50 flex justify-between items-center">
+                <h3 className="text-sm font-semibold text-slate-700">Notifications</h3>
                 <div className="flex gap-3">
                   {notifications.length > 0 && (
                     <button
                       onClick={performClearAll}
                       disabled={isClearing}
-                      className="text-xs text-red-600 hover:text-red-700 font-medium flex items-center gap-1"
+                      className="text-xs text-red-500 hover:text-red-600 font-medium flex items-center gap-1"
                     >
                       {isClearing ? <Loader2 size={12} className="animate-spin" /> : "Clear all"}
                     </button>
                   )}
                   <button
                     onClick={fetchNotifications}
-                    className="text-xs text-yellow-600 hover:text-yellow-700 font-medium"
+                    className="text-xs text-blue-500 hover:text-blue-600 font-medium"
                   >
                     Refresh
                   </button>
@@ -150,15 +142,15 @@ export default function UnifiedHeader() {
                     <div
                       key={idx}
                       onClick={() => handleNotificationClick(notif)}
-                      className="p-4 border-b border-gray-100 cursor-pointer transition bg-blue-50 hover:bg-blue-100"
+                      className="p-4 border-b border-blue-50 cursor-pointer transition bg-blue-50 hover:bg-blue-100"
                     >
                       <div className="flex items-start gap-2">
                         <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
                         <div>
-                          <p className="text-sm text-gray-900 font-medium">
+                          <p className="text-sm text-slate-800 font-medium">
                             {notif.message || "New notification"}
                           </p>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-slate-400 mt-1">
                             {notif.createdAt
                               ? new Date(notif.createdAt).toLocaleDateString()
                               : "Just now"}
@@ -168,7 +160,7 @@ export default function UnifiedHeader() {
                     </div>
                   ))
                 ) : (
-                  <div className="p-4 text-center text-gray-500 text-sm">
+                  <div className="p-6 text-center text-slate-400 text-sm">
                     No new notifications
                   </div>
                 )}
@@ -178,26 +170,26 @@ export default function UnifiedHeader() {
         </div>
 
         {/* Profile Avatar */}
-        <div className="flex items-center gap-3 pl-4 border-l border-gray-100">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-500 to-yellow-600 shadow-md flex items-center justify-center text-white font-bold text-sm">
+        <div className="flex items-center gap-3 pl-4 border-l border-blue-100">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 shadow-md flex items-center justify-center text-white font-bold text-sm">
             {getInitials(user?.name)}
           </div>
           <div className="hidden sm:block">
-            <p className="text-sm font-medium text-gray-800">{user?.name}</p>
-            <p className="text-xs text-gray-500">{user?.role}</p>
+            <p className="text-sm font-medium text-slate-700">{user?.name}</p>
+            <p className="text-xs text-slate-400 capitalize">{user?.role}</p>
           </div>
         </div>
 
         {/* Logout Button */}
         <button
           onClick={handleLogout}
-          className="p-2 rounded-full hover:bg-red-50 transition text-red-600"
+          className="w-9 h-9 rounded-full bg-white border border-blue-100 shadow-sm flex items-center justify-center hover:bg-red-50 hover:border-red-100 transition text-red-500"
           title="Logout"
         >
-          <LogOut size={18} />
+          <LogOut size={17} />
         </button>
-      </div>
 
+      </div>
     </header>
   );
 }

@@ -4,6 +4,8 @@ import axios from "axios";
 import { ArrowLeft, Calendar, Clock, MapPin, Award, Star } from "lucide-react";
 import Loader from "../Componet/Loader";
 import DoctorAvatar from "../Componet/DoctorAvatar";
+import PublicHeader from "../Componet/PublicHeader";
+import PublicFooter from "../Componet/PublicFooter";
 import { getCurrentUser, getStoredAuth } from "../utils/authHelpers";
 
 export default function DoctorProfilePage() {
@@ -61,41 +63,31 @@ export default function DoctorProfilePage() {
 
   if (error || !doctor) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Doctor Not Found</h1>
-          <p className="text-gray-600 mb-6">{error || "Unable to load doctor profile"}</p>
-          <Link
-            to={user?.role === "patient" ? "/patient/browse-services" : "/browse-doctors"}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition"
-          >
-            <ArrowLeft size={20} />
-            Back to Doctors
-          </Link>
+      <div className="min-h-screen bg-white">
+        {!isPatientLayoutView && <PublicHeader sticky />}
+
+        <div className="flex items-center justify-center px-6" style={{ minHeight: isPatientLayoutView ? "100vh" : "70vh" }}>
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Doctor Not Found</h1>
+            <p className="text-gray-600 mb-6">{error || "Unable to load doctor profile"}</p>
+            <Link
+              to={user?.role === "patient" ? "/patient/browse-services" : "/browse-doctors"}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition"
+            >
+              <ArrowLeft size={20} />
+              Back to Doctors
+            </Link>
+          </div>
         </div>
+
+        {!isPatientLayoutView && <PublicFooter />}
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
-      {!isPatientLayoutView && (
-        <header className="bg-white border-b sticky top-0 z-50">
-          <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center gap-2 text-gray-700 hover:text-gray-900 transition"
-            >
-              <ArrowLeft size={20} />
-              <span>Back</span>
-            </button>
-            <div className="flex-1 text-center">
-              <h1 className="text-xl font-bold text-gray-800">Doctor Profile</h1>
-            </div>
-            <div className="w-20"></div>
-          </div>
-        </header>
-      )}
+      {!isPatientLayoutView && <PublicHeader sticky />}
 
       {/* Profile Content */}
       <div className="max-w-4xl mx-auto px-6 py-12">
@@ -277,6 +269,8 @@ export default function DoctorProfilePage() {
           )}
         </div>
       </div>
+
+      {!isPatientLayoutView && <PublicFooter />}
     </div>
   );
 }

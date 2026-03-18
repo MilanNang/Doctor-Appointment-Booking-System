@@ -17,6 +17,7 @@ import DoctorDashboard from "../pages/Doctor/Dashboard";
 import DoctorProfile from "../pages/Doctor/Profile";
 import DoctorCalendar from "../pages/Doctor/Calendar";
 import DoctorBooking from "../pages/Doctor/Booking";
+import DoctorSettings from "../pages/Doctor/Settings";
 
 import PatientLayout from "../Layouts/PatientLayout";
 import PatientDashboard from "../pages/Patient/Dashboard";
@@ -54,6 +55,7 @@ export default function AppRoutes() {
         <Route path="profile" element={<DoctorProfile />} />
         <Route path="calendar" element={<DoctorCalendar />} />
         <Route path="bookings" element={<DoctorBooking />} />
+        <Route path="settings" element={<DoctorSettings />} />
       </Route>
 
       <Route path="/patient" element={<ProtectedRoute requiredRole="patient"><PatientLayout /></ProtectedRoute>}>

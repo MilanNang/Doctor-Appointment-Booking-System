@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
-import { FileText, Download, Calendar } from "lucide-react";
+import { FileText, Download, Calendar, Clock, Stethoscope, X, Pill, ClipboardList } from "lucide-react";
 import API from "../util/api";
 import { showToast } from "../../Redux/toastSlice";
 
@@ -50,75 +50,391 @@ export default function MedicalHistory() {
     }
   };
 
-  if (loading) return <div className="p-6 text-center">Loading medical history...</div>;
+  if (loading) return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
+      }}
+    >
+      <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            width: "44px", height: "44px", borderRadius: "50%",
+            border: "3px solid #dbeafe", borderTopColor: "#2563eb",
+            animation: "spin 0.8s linear infinite", margin: "0 auto 12px",
+          }}
+        />
+        <p style={{ color: "#2563eb", fontSize: "14px", fontWeight: "500" }}>Loading medical history...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-6">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-blue-900 mb-6">Medical History Timeline</h1>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #f0f7ff 0%, #ffffff 60%, #e8f4ff 100%)",
+        padding: "28px",
+        fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
+      }}
+    >
+      <div style={{ maxWidth: "860px", margin: "0 auto" }}>
 
-        {history.length === 0 && <p className="text-gray-600">No completed appointments yet.</p>}
+        {/* Page header */}
+        <div style={{ marginBottom: "28px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
+            <div
+              style={{
+                width: "38px", height: "38px", borderRadius: "10px",
+                background: "linear-gradient(135deg, #2563eb, #38bdf8)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: "#fff", flexShrink: 0,
+                boxShadow: "0 4px 12px rgba(37,99,235,0.25)",
+              }}
+            >
+              <ClipboardList size={18} />
+            </div>
+            <h1 style={{ margin: 0, fontSize: "24px", fontWeight: "800", color: "#1e3a5f" }}>
+              Medical History
+            </h1>
+          </div>
+          <p style={{ margin: 0, fontSize: "13px", color: "#64748b", paddingLeft: "48px" }}>
+            Your complete appointment & prescription timeline
+          </p>
+        </div>
 
-        <div className="space-y-4">
-          {history.map((item) => (
-            <div key={item._id} className="bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-semibold text-gray-900">Dr. {item.doctor?.user?.name || "Doctor"}</p>
-                  <p className="text-sm text-blue-700">{item.doctor?.specialization || "Specialist"}</p>
-                  <div className="flex gap-4 mt-2 text-sm text-gray-600">
-                    <span className="flex items-center gap-1"><Calendar className="w-4 h-4" />{item.date} {item.time}</span>
+        {history.length === 0 ? (
+          <div
+            style={{
+              background: "#fff", borderRadius: "16px",
+              padding: "48px", textAlign: "center",
+              border: "1px solid #dbeafe",
+              boxShadow: "0 2px 12px rgba(37,99,235,0.06)",
+            }}
+          >
+            <ClipboardList size={36} style={{ color: "#bfdbfe", margin: "0 auto 12px" }} />
+            <p style={{ color: "#94a3b8", fontSize: "14px" }}>No completed appointments yet.</p>
+          </div>
+        ) : (
+          /* Timeline */
+          <div style={{ position: "relative" }}>
+            {/* Vertical line */}
+            <div
+              style={{
+                position: "absolute",
+                left: "19px",
+                top: "24px",
+                bottom: "24px",
+                width: "2px",
+                background: "linear-gradient(to bottom, #bfdbfe, #e0f0ff)",
+                borderRadius: "2px",
+              }}
+            />
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              {history.map((item, index) => (
+                <div key={item._id} style={{ display: "flex", gap: "16px", alignItems: "flex-start" }}>
+
+                  {/* Timeline dot */}
+                  <div
+                    style={{
+                      width: "40px", height: "40px", borderRadius: "50%",
+                      background: "linear-gradient(135deg, #2563eb, #38bdf8)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      color: "#fff", flexShrink: 0, zIndex: 1,
+                      boxShadow: "0 4px 12px rgba(37,99,235,0.25)",
+                      border: "3px solid #fff",
+                    }}
+                  >
+                    <Stethoscope size={16} />
+                  </div>
+
+                  {/* Card */}
+                  <div
+                    style={{
+                      flex: 1,
+                      background: "#fff",
+                      borderRadius: "16px",
+                      padding: "20px",
+                      border: "1px solid #dbeafe",
+                      boxShadow: "0 2px 16px rgba(37,99,235,0.06)",
+                    }}
+                  >
+                    {/* Card header */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+                      <div>
+                        <p style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#1e3a5f" }}>
+                          Dr. {item.doctor?.user?.name || "Doctor"}
+                        </p>
+                        <p style={{ margin: "3px 0 0", fontSize: "13px", color: "#2563eb", fontWeight: "500" }}>
+                          {item.doctor?.specialization || "Specialist"}
+                        </p>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "8px" }}>
+                          <Calendar size={13} style={{ color: "#60a5fa" }} />
+                          <span style={{ fontSize: "12px", color: "#64748b" }}>{item.date}</span>
+                          <Clock size={13} style={{ color: "#60a5fa" }} />
+                          <span style={{ fontSize: "12px", color: "#64748b" }}>{item.time}</span>
+                        </div>
+                      </div>
+                      <span
+                        style={{
+                          padding: "4px 12px", borderRadius: "20px",
+                          fontSize: "11px", fontWeight: "700",
+                          background: "#ecfdf5", color: "#059669",
+                          border: "1px solid #a7f3d0",
+                          textTransform: "capitalize",
+                        }}
+                      >
+                        {item.status}
+                      </span>
+                    </div>
+
+                    {/* Medical report */}
+                    {item.medicalReport && (
+                      <div
+                        style={{
+                          background: "linear-gradient(135deg, #f8faff, #eff6ff)",
+                          borderRadius: "12px",
+                          padding: "14px 16px",
+                          border: "1px solid #dbeafe",
+                          marginBottom: "14px",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "8px",
+                        }}
+                      >
+                        {item.medicalReport.diagnosis && (
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <span style={{ fontSize: "12px", fontWeight: "700", color: "#94a3b8", minWidth: "90px" }}>Diagnosis</span>
+                            <span style={{ fontSize: "13px", color: "#1e3a5f" }}>{item.medicalReport.diagnosis}</span>
+                          </div>
+                        )}
+                        {item.medicalReport.prescription && (
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <span style={{ fontSize: "12px", fontWeight: "700", color: "#94a3b8", minWidth: "90px" }}>Prescription</span>
+                            <span style={{ fontSize: "13px", color: "#1e3a5f", whiteSpace: "pre-wrap" }}>{item.medicalReport.prescription}</span>
+                          </div>
+                        )}
+                        {item.medicalReport.followUpDate && (
+                          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                            <span style={{ fontSize: "12px", fontWeight: "700", color: "#94a3b8", minWidth: "90px" }}>Follow-up</span>
+                            <span
+                              style={{
+                                fontSize: "12px", fontWeight: "600",
+                                color: "#2563eb", background: "#dbeafe",
+                                padding: "2px 10px", borderRadius: "20px",
+                              }}
+                            >
+                              {new Date(item.medicalReport.followUpDate).toLocaleDateString()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Action buttons */}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                      <button
+                        onClick={() => viewPrescription(item._id)}
+                        style={{
+                          padding: "8px 16px", borderRadius: "10px",
+                          background: "#eff6ff", border: "1px solid #bfdbfe",
+                          color: "#2563eb", fontSize: "13px", fontWeight: "600",
+                          cursor: "pointer", display: "flex", alignItems: "center", gap: "6px",
+                          transition: "all 0.15s",
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = "#dbeafe"}
+                        onMouseLeave={(e) => e.currentTarget.style.background = "#eff6ff"}
+                      >
+                        <FileText size={14} /> View Prescription
+                      </button>
+                      <button
+                        onClick={() => downloadPrescription(item._id)}
+                        style={{
+                          padding: "8px 16px", borderRadius: "10px",
+                          background: "#f0fdf4", border: "1px solid #bbf7d0",
+                          color: "#16a34a", fontSize: "13px", fontWeight: "600",
+                          cursor: "pointer", display: "flex", alignItems: "center", gap: "6px",
+                          transition: "all 0.15s",
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = "#dcfce7"}
+                        onMouseLeave={(e) => e.currentTarget.style.background = "#f0fdf4"}
+                      >
+                        <Download size={14} /> Download PDF
+                      </button>
+                    </div>
+
+                    {/* Review */}
+                    {item.review && (
+                      <div
+                        style={{
+                          marginTop: "12px", padding: "10px 14px",
+                          background: "#fffbeb", border: "1px solid #fde68a",
+                          borderRadius: "10px", fontSize: "12px", color: "#92400e",
+                          display: "flex", alignItems: "center", gap: "6px",
+                        }}
+                      >
+                        <span style={{ fontWeight: "700" }}>⭐ {item.review.rating}/5</span>
+                        {item.review.comment && <span>· {item.review.comment}</span>}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <span className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full">{item.status}</span>
-              </div>
-
-              {item.medicalReport && (
-                <div className="mt-4 p-3 bg-gray-50 rounded-lg text-sm">
-                  <p><strong>Diagnosis:</strong> {item.medicalReport.diagnosis || "N/A"}</p>
-                  <p className="mt-2 whitespace-pre-wrap"><strong>Prescription:</strong> {item.medicalReport.prescription || "N/A"}</p>
-                  {item.medicalReport.followUpDate && (
-                    <p className="mt-2 text-blue-700"><strong>Follow-up:</strong> {new Date(item.medicalReport.followUpDate).toLocaleDateString()}</p>
-                  )}
-                </div>
-              )}
-
-              <div className="flex flex-wrap gap-2 mt-4">
-                <button className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm flex items-center gap-1" onClick={() => viewPrescription(item._id)}>
-                  <FileText className="w-4 h-4" /> View Prescription
-                </button>
-                <button className="px-3 py-2 bg-green-100 text-green-700 rounded-lg text-sm flex items-center gap-1" onClick={() => downloadPrescription(item._id)}>
-                  <Download className="w-4 h-4" /> Download PDF
-                </button>
-              </div>
-
-              {item.review && (
-                <div className="mt-3 p-2 bg-amber-50 border border-amber-100 rounded text-xs text-amber-700">
-                  Your rating: {item.review.rating}/5 {item.review.comment && `• ${item.review.comment}`}
-                </div>
-              )}
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
 
+      {/* Prescription Modal */}
       {selectedPrescription && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl bg-white rounded-xl p-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="font-semibold text-blue-900">Prescription (Version {selectedPrescription.version})</h3>
-            <p className="mt-3 text-sm"><strong>Diagnosis:</strong> {selectedPrescription.diagnosis}</p>
-            <div className="mt-3">
-              <p className="font-medium text-sm">Medicines</p>
-              <ul className="list-disc ml-5 text-sm text-gray-700">
-                {selectedPrescription.medicines?.map((m, index) => (
-                  <li key={index}>{m.name} - {m.dosage}, {m.frequency}, {m.duration}</li>
-                ))}
-              </ul>
+        <div
+          style={{
+            position: "fixed", inset: 0,
+            background: "rgba(15,23,42,0.5)",
+            backdropFilter: "blur(4px)",
+            zIndex: 50,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "16px",
+          }}
+        >
+          <div
+            style={{
+              width: "100%", maxWidth: "580px",
+              background: "#fff", borderRadius: "20px",
+              padding: "28px",
+              maxHeight: "90vh", overflowY: "auto",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.2)",
+              border: "1px solid #dbeafe",
+            }}
+          >
+            {/* Modal header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div
+                  style={{
+                    width: "36px", height: "36px", borderRadius: "10px",
+                    background: "linear-gradient(135deg, #2563eb, #38bdf8)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "#fff",
+                  }}
+                >
+                  <FileText size={16} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "700", color: "#1e3a5f" }}>
+                    Prescription
+                  </h3>
+                  <p style={{ margin: 0, fontSize: "11px", color: "#94a3b8" }}>
+                    Version {selectedPrescription.version}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedPrescription(null)}
+                style={{
+                  width: "32px", height: "32px", borderRadius: "50%",
+                  border: "1px solid #dbeafe", background: "#f8faff",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", color: "#64748b",
+                }}
+              >
+                <X size={15} />
+              </button>
             </div>
-            {selectedPrescription.advice && <p className="mt-3 text-sm"><strong>Advice:</strong> {selectedPrescription.advice}</p>}
-            <div className="mt-4 text-right">
-              <button className="px-4 py-2 rounded-lg border" onClick={() => setSelectedPrescription(null)}>Close</button>
+
+            {/* Diagnosis */}
+            <div
+              style={{
+                background: "#eff6ff", borderRadius: "12px",
+                padding: "14px 16px", border: "1px solid #bfdbfe",
+                marginBottom: "16px",
+              }}
+            >
+              <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                Diagnosis
+              </p>
+              <p style={{ margin: 0, fontSize: "14px", color: "#1e3a5f", fontWeight: "500" }}>
+                {selectedPrescription.diagnosis || "N/A"}
+              </p>
             </div>
+
+            {/* Medicines */}
+            {selectedPrescription.medicines?.length > 0 && (
+              <div style={{ marginBottom: "16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
+                  <Pill size={14} style={{ color: "#2563eb" }} />
+                  <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#1e3a5f" }}>Medicines</p>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {selectedPrescription.medicines.map((m, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        padding: "12px 14px", borderRadius: "10px",
+                        background: "#f8faff", border: "1px solid #dbeafe",
+                        display: "flex", alignItems: "center", gap: "10px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "28px", height: "28px", borderRadius: "8px",
+                          background: "#eff6ff", border: "1px solid #bfdbfe",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          color: "#2563eb", flexShrink: 0,
+                          fontSize: "11px", fontWeight: "700",
+                        }}
+                      >
+                        {i + 1}
+                      </div>
+                      <div>
+                        <p style={{ margin: 0, fontSize: "13px", fontWeight: "600", color: "#1e3a5f" }}>{m.name}</p>
+                        <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#64748b" }}>
+                          {m.dosage} · {m.frequency} · {m.duration}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Advice */}
+            {selectedPrescription.advice && (
+              <div
+                style={{
+                  background: "#fffbeb", borderRadius: "10px",
+                  padding: "12px 14px", border: "1px solid #fde68a",
+                  marginBottom: "20px",
+                }}
+              >
+                <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: "700", color: "#92400e", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  Advice
+                </p>
+                <p style={{ margin: 0, fontSize: "13px", color: "#78350f" }}>{selectedPrescription.advice}</p>
+              </div>
+            )}
+
+            {/* Close */}
+            <button
+              onClick={() => setSelectedPrescription(null)}
+              style={{
+                width: "100%", padding: "12px",
+                borderRadius: "12px",
+                background: "linear-gradient(135deg, #2563eb, #38bdf8)",
+                color: "#fff", fontSize: "14px", fontWeight: "700",
+                border: "none", cursor: "pointer",
+                boxShadow: "0 4px 14px rgba(37,99,235,0.3)",
+              }}
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

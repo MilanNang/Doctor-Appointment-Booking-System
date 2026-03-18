@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Clock, Download, Star } from "lucide-react";
+import { Calendar, Clock, Download, Star, FileText, X, Pill, CheckCircle2, XCircle, ClipboardList } from "lucide-react";
 import API from "../util/api";
 import { showToast } from "../../Redux/toastSlice";
 import ConfirmDialog from "../../Componet/ConfirmDialog";
@@ -39,9 +39,7 @@ export default function MyAppointments() {
       await loadAppointments();
       setLoading(false);
     };
-
     init();
-
     const socket = getSocket();
     socket.on("appointmentStatusUpdate", loadAppointments);
     return () => socket.off("appointmentStatusUpdate", loadAppointments);
@@ -50,38 +48,46 @@ export default function MyAppointments() {
   const canShowCheckIn = (appointment) => {
     if (appointment.status !== "approved") return false;
     if (appointment.checkInTime) return false;
-
     const now = new Date();
     const apDate = new Date(`${appointment.date} ${appointment.time}`);
     const sameDay = now.toDateString() === new Date(appointment.date).toDateString();
     const oneHourBefore = new Date(apDate.getTime() - 60 * 60 * 1000);
-
     return sameDay && now >= oneHourBefore;
   };
 
   const timeline = (status) => {
     const index = FLOW.indexOf(status);
     return (
-      <div className="flex items-center gap-1 mt-2 overflow-x-auto">
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "12px", alignItems: "center" }}>
         {FLOW.map((item, idx) => (
-          <div key={item} className="flex items-center gap-1">
-            <span className={`text-[10px] px-2 py-1 rounded-full whitespace-nowrap ${idx <= index ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"}`}>
-              {item.replaceAll("-", " ")}
-            </span>
-            {idx < FLOW.length - 1 && <span className="text-gray-300">→</span>}
-          </div>
+          <span
+            key={item}
+            style={{
+              fontSize: "11px",
+              padding: "3px 10px",
+              borderRadius: "20px",
+              textTransform: "capitalize",
+              fontWeight: idx <= index ? "600" : "400",
+              background: idx <= index
+                ? "linear-gradient(135deg, #2563eb, #38bdf8)"
+                : "#f0f7ff",
+              color: idx <= index ? "#fff" : "#94a3b8",
+              border: idx <= index ? "none" : "1px solid #dbeafe",
+              boxShadow: idx <= index ? "0 2px 8px rgba(37,99,235,0.2)" : "none",
+            }}
+          >
+            {item.replaceAll("-", " ")}
+          </span>
         ))}
       </div>
     );
   };
 
-  const stats = useMemo(() => {
-    return {
-      pending: appointments.filter((a) => a.status === "pending").length,
-      approved: appointments.filter((a) => a.status === "approved").length,
-      completed: appointments.filter((a) => ["consultation-completed", "completed"].includes(a.status)).length
-    };
-  }, [appointments]);
+  const stats = useMemo(() => ({
+    pending: appointments.filter((a) => a.status === "pending").length,
+    approved: appointments.filter((a) => a.status === "approved").length,
+    completed: appointments.filter((a) => ["consultation-completed", "completed"].includes(a.status)).length,
+  }), [appointments]);
 
   const markArrived = async (id) => {
     try {
@@ -132,7 +138,7 @@ export default function MyAppointments() {
     try {
       await API.post(`/appointments/${reviewModal.appointmentId}/review`, {
         rating: reviewModal.rating,
-        comment: reviewModal.comment
+        comment: reviewModal.comment,
       });
       dispatch(showToast({ message: "Review submitted", type: "success" }));
       setReviewModal({ open: false, appointmentId: null, rating: 5, comment: "" });
@@ -142,154 +148,517 @@ export default function MyAppointments() {
     }
   };
 
-  if (loading) return <div className="p-6 text-center">Loading appointments...</div>;
+  const statusStyle = (status) => {
+    if (!status) return { color: "#64748b", bg: "#f1f5f9", border: "#e2e8f0" };
+    const s = status.toLowerCase();
+    if (s === "approved") return { color: "#2563eb", bg: "#eff6ff", border: "#bfdbfe" };
+    if (s === "pending") return { color: "#d97706", bg: "#fffbeb", border: "#fde68a" };
+    if (s === "consultation-completed" || s === "completed") return { color: "#059669", bg: "#ecfdf5", border: "#a7f3d0" };
+    if (s === "cancelled") return { color: "#dc2626", bg: "#fef2f2", border: "#fecaca" };
+    if (s === "arrived") return { color: "#0891b2", bg: "#ecfeff", border: "#a5f3fc" };
+    return { color: "#2563eb", bg: "#eff6ff", border: "#bfdbfe" };
+  };
+
+  // Shared inline button style helper
+  const btn = (variant = "blue") => {
+    const styles = {
+      blue: { bg: "#eff6ff", border: "#bfdbfe", color: "#2563eb", hoverBg: "#dbeafe" },
+      green: { bg: "#f0fdf4", border: "#bbf7d0", color: "#16a34a", hoverBg: "#dcfce7" },
+      red: { bg: "#fef2f2", border: "#fecaca", color: "#dc2626", hoverBg: "#fee2e2" },
+      amber: { bg: "#fffbeb", border: "#fde68a", color: "#d97706", hoverBg: "#fef3c7" },
+      solid: { bg: "linear-gradient(135deg,#2563eb,#38bdf8)", border: "none", color: "#fff", hoverBg: "" },
+    };
+    return styles[variant] || styles.blue;
+  };
+
+  if (loading) return (
+    <div style={{
+      minHeight: "100vh", background: "linear-gradient(135deg,#f0f7ff,#fff)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontFamily: "'DM Sans','Segoe UI',sans-serif",
+    }}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{
+          width: "44px", height: "44px", borderRadius: "50%",
+          border: "3px solid #dbeafe", borderTopColor: "#2563eb",
+          animation: "spin 0.8s linear infinite", margin: "0 auto 12px",
+        }} />
+        <p style={{ color: "#2563eb", fontSize: "14px", fontWeight: "500" }}>Loading appointments...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <h1 className="text-3xl font-bold text-blue-900">My Appointments</h1>
+    <div style={{
+      minHeight: "100vh",
+      background: "linear-gradient(135deg,#f0f7ff 0%,#ffffff 55%,#e8f4ff 100%)",
+      padding: "28px",
+      fontFamily: "'DM Sans','Segoe UI',sans-serif",
+    }}>
+      <div style={{ maxWidth: "900px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "24px" }}>
 
+        {/* ── PAGE HEADER ── */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{
+            width: "38px", height: "38px", borderRadius: "10px",
+            background: "linear-gradient(135deg,#2563eb,#38bdf8)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#fff", boxShadow: "0 4px 12px rgba(37,99,235,0.25)",
+          }}>
+            <ClipboardList size={18} />
+          </div>
+          <div>
+            <h1 style={{ margin: 0, fontSize: "22px", fontWeight: "800", color: "#1e3a5f" }}>My Appointments</h1>
+            <p style={{ margin: 0, fontSize: "12px", color: "#64748b" }}>Track and manage your health visits</p>
+          </div>
+        </div>
+
+        {/* ── REMINDERS ── */}
         {reminders.length > 0 && (
-          <div className="bg-white border border-blue-200 rounded-xl p-4">
-            <h2 className="text-blue-800 font-semibold">Appointment Reminders</h2>
-            <div className="mt-3 space-y-2">
-              {reminders.slice(0, 5).map((item) => {
-                const latest = item.reminderHistory?.[item.reminderHistory.length - 1];
-                return (
-                  <div key={item._id} className="text-sm text-blue-700 bg-blue-50 rounded-lg p-2">
-                    Dr. {item.doctor?.user?.name || "Doctor"} on {item.date} at {item.time} ({latest?.type || "reminder"})
-                  </div>
-                );
-              })}
+          <div style={{
+            background: "#fff", borderRadius: "16px",
+            padding: "18px 20px", border: "1px solid #dbeafe",
+            boxShadow: "0 2px 12px rgba(37,99,235,0.06)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+              <Clock size={15} style={{ color: "#2563eb" }} />
+              <h2 style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "#1e3a5f" }}>Reminders</h2>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {reminders.slice(0, 5).map((item) => (
+                <div key={item._id} style={{
+                  padding: "10px 14px", borderRadius: "10px",
+                  background: "#eff6ff", border: "1px solid #bfdbfe",
+                  fontSize: "13px", color: "#1e40af", fontWeight: "500",
+                  display: "flex", alignItems: "center", gap: "8px",
+                }}>
+                  <Clock size={13} style={{ color: "#60a5fa", flexShrink: 0 }} />
+                  Dr. {item.doctor?.user?.name} • {item.date} • {item.time}
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-white p-4 rounded-xl border border-blue-100 text-center"><p className="text-2xl font-bold text-amber-600">{stats.pending}</p><p className="text-xs text-gray-500">Pending</p></div>
-          <div className="bg-white p-4 rounded-xl border border-blue-100 text-center"><p className="text-2xl font-bold text-blue-600">{stats.approved}</p><p className="text-xs text-gray-500">Approved</p></div>
-          <div className="bg-white p-4 rounded-xl border border-blue-100 text-center"><p className="text-2xl font-bold text-green-600">{stats.completed}</p><p className="text-xs text-gray-500">Completed</p></div>
-        </div>
-
-        <div className="space-y-4">
-          {appointments.map((appt) => (
-            <div key={appt._id} className="bg-white rounded-xl border border-blue-100 p-4 shadow-sm">
-              <div className="flex gap-4 items-start">
-                <DoctorAvatar doctor={appt.doctor} size="w-14 h-14" />
-                <div className="flex-1">
-                  <div className="flex justify-between">
-                    <div>
-                      <p className="font-semibold text-gray-900">Dr. {appt.doctor?.user?.name || "Doctor"}</p>
-                      <p className="text-sm text-blue-700">{appt.doctor?.specialization || "Specialist"}</p>
-                    </div>
-                    <span className="text-xs px-3 py-1 rounded-full bg-blue-100 text-blue-700 capitalize">{appt.status}</span>
-                  </div>
-
-                  <div className="flex gap-4 mt-2 text-sm text-gray-600">
-                    <span className="flex items-center gap-1"><Calendar className="w-4 h-4" />{appt.date}</span>
-                    <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{appt.time}</span>
-                  </div>
-
-                  {timeline(appt.status)}
-
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    {canShowCheckIn(appt) && (
-                      <button className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm" onClick={() => markArrived(appt._id)}>
-                        Mark as Arrived
-                      </button>
-                    )}
-
-                    {appt.status === "approved" && (
-                      <button className="px-3 py-2 border border-red-300 text-red-700 rounded-lg text-sm" onClick={() => setConfirmDialog({ isOpen: true, appointmentId: appt._id, action: "cancel" })}>
-                        Cancel
-                      </button>
-                    )}
-
-                    {["consultation-completed", "completed"].includes(appt.status) && (
-                      <>
-                        <button className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm" onClick={() => viewPrescription(appt._id)}>
-                          View Prescription
-                        </button>
-                        <button className="px-3 py-2 bg-green-100 text-green-700 rounded-lg text-sm flex items-center gap-1" onClick={() => downloadPrescription(appt._id)}>
-                          <Download className="w-4 h-4" /> PDF
-                        </button>
-                        <button
-                          className="px-3 py-2 bg-indigo-100 text-indigo-700 rounded-lg text-sm"
-                          onClick={() => navigate(`/patient/browse-services?doctorId=${appt.doctor?._id}&followUpOf=${appt._id}`)}
-                        >
-                          Book Follow-up
-                        </button>
-                        {!appt.review && (
-                          <button className="px-3 py-2 bg-amber-100 text-amber-700 rounded-lg text-sm" onClick={() => setReviewModal({ open: true, appointmentId: appt._id, rating: 5, comment: "" })}>
-                            Rate & Feedback
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
+        {/* ── STATS ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "14px" }}>
+          {[
+            { label: "Pending", value: stats.pending, color: "#d97706", bg: "#fffbeb", border: "#fde68a" },
+            { label: "Approved", value: stats.approved, color: "#2563eb", bg: "#eff6ff", border: "#bfdbfe" },
+            { label: "Completed", value: stats.completed, color: "#059669", bg: "#ecfdf5", border: "#a7f3d0" },
+          ].map((s) => (
+            <div key={s.label} style={{
+              background: "#fff", borderRadius: "14px",
+              padding: "18px", textAlign: "center",
+              border: `1px solid ${s.border}`,
+              boxShadow: "0 2px 10px rgba(37,99,235,0.06)",
+            }}>
+              <p style={{ margin: 0, fontSize: "28px", fontWeight: "800", color: s.color }}>{s.value}</p>
+              <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#94a3b8", fontWeight: "500" }}>{s.label}</p>
             </div>
           ))}
         </div>
+
+        {/* ── APPOINTMENTS LIST ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          {appointments.length === 0 ? (
+            <div style={{
+              background: "#fff", borderRadius: "16px", padding: "48px",
+              textAlign: "center", border: "1px solid #dbeafe",
+            }}>
+              <ClipboardList size={36} style={{ color: "#bfdbfe", margin: "0 auto 10px" }} />
+              <p style={{ color: "#94a3b8", fontSize: "14px" }}>No appointments yet.</p>
+            </div>
+          ) : (
+            appointments.map((appt) => {
+              const sc = statusStyle(appt.status);
+              return (
+                <div key={appt._id} style={{
+                  background: "#fff", borderRadius: "16px",
+                  padding: "20px", border: "1px solid #dbeafe",
+                  boxShadow: "0 2px 14px rgba(37,99,235,0.06)",
+                  transition: "box-shadow 0.15s",
+                }}
+                  onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 6px 24px rgba(37,99,235,0.12)"}
+                  onMouseLeave={(e) => e.currentTarget.style.boxShadow = "0 2px 14px rgba(37,99,235,0.06)"}
+                >
+                  <div style={{ display: "flex", gap: "14px" }}>
+                    <DoctorAvatar doctor={appt.doctor} size="w-14 h-14" />
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {/* Top row */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                        <div>
+                          <p style={{ margin: 0, fontSize: "15px", fontWeight: "700", color: "#1e3a5f" }}>
+                            Dr. {appt.doctor?.user?.name}
+                          </p>
+                          <p style={{ margin: "2px 0 0", fontSize: "13px", color: "#2563eb", fontWeight: "500" }}>
+                            {appt.doctor?.specialization}
+                          </p>
+                        </div>
+                        <span style={{
+                          padding: "4px 12px", borderRadius: "20px", fontSize: "11px",
+                          fontWeight: "700", textTransform: "capitalize", whiteSpace: "nowrap",
+                          color: sc.color, background: sc.bg, border: `1px solid ${sc.border}`,
+                        }}>
+                          {appt.status?.replaceAll("-", " ")}
+                        </span>
+                      </div>
+
+                      {/* Date & time */}
+                      <div style={{ display: "flex", gap: "16px", marginTop: "10px" }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "13px", color: "#64748b" }}>
+                          <Calendar size={13} style={{ color: "#60a5fa" }} /> {appt.date}
+                        </span>
+                        <span style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "13px", color: "#64748b" }}>
+                          <Clock size={13} style={{ color: "#60a5fa" }} /> {appt.time}
+                        </span>
+                      </div>
+
+                      {/* Timeline */}
+                      {timeline(appt.status)}
+
+                      {/* Action buttons */}
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "14px" }}>
+                        {canShowCheckIn(appt) && (
+                          <button
+                            onClick={() => markArrived(appt._id)}
+                            style={{
+                              padding: "8px 16px", borderRadius: "10px", border: "none",
+                              background: "linear-gradient(135deg,#2563eb,#38bdf8)",
+                              color: "#fff", fontSize: "13px", fontWeight: "600",
+                              cursor: "pointer", display: "flex", alignItems: "center", gap: "6px",
+                              boxShadow: "0 4px 12px rgba(37,99,235,0.25)",
+                            }}
+                          >
+                            <CheckCircle2 size={14} /> Mark as Arrived
+                          </button>
+                        )}
+
+                        {appt.status === "approved" && (
+                          <button
+                            onClick={() => setConfirmDialog({ isOpen: true, appointmentId: appt._id, action: "cancel" })}
+                            style={{
+                              padding: "8px 16px", borderRadius: "10px",
+                              background: "#fef2f2", border: "1px solid #fecaca",
+                              color: "#dc2626", fontSize: "13px", fontWeight: "600",
+                              cursor: "pointer", display: "flex", alignItems: "center", gap: "6px",
+                              transition: "background 0.15s",
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = "#fee2e2"}
+                            onMouseLeave={(e) => e.currentTarget.style.background = "#fef2f2"}
+                          >
+                            <XCircle size={14} /> Cancel
+                          </button>
+                        )}
+
+                        {["consultation-completed", "completed"].includes(appt.status) && (<>
+                          <button
+                            onClick={() => viewPrescription(appt._id)}
+                            style={{
+                              padding: "8px 16px", borderRadius: "10px",
+                              background: "#eff6ff", border: "1px solid #bfdbfe",
+                              color: "#2563eb", fontSize: "13px", fontWeight: "600",
+                              cursor: "pointer", display: "flex", alignItems: "center", gap: "6px",
+                              transition: "background 0.15s",
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = "#dbeafe"}
+                            onMouseLeave={(e) => e.currentTarget.style.background = "#eff6ff"}
+                          >
+                            <FileText size={14} /> View Prescription
+                          </button>
+
+                          <button
+                            onClick={() => downloadPrescription(appt._id)}
+                            style={{
+                              padding: "8px 16px", borderRadius: "10px",
+                              background: "#f0fdf4", border: "1px solid #bbf7d0",
+                              color: "#16a34a", fontSize: "13px", fontWeight: "600",
+                              cursor: "pointer", display: "flex", alignItems: "center", gap: "6px",
+                              transition: "background 0.15s",
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = "#dcfce7"}
+                            onMouseLeave={(e) => e.currentTarget.style.background = "#f0fdf4"}
+                          >
+                            <Download size={14} /> PDF
+                          </button>
+
+                          <button
+                            onClick={() => navigate(`/patient/calendar/${appt.doctor?._id}`)}
+                            style={{
+                              padding: "8px 16px", borderRadius: "10px",
+                              background: "#f5f3ff", border: "1px solid #ddd6fe",
+                              color: "#7c3aed", fontSize: "13px", fontWeight: "600",
+                              cursor: "pointer", transition: "background 0.15s",
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = "#ede9fe"}
+                            onMouseLeave={(e) => e.currentTarget.style.background = "#f5f3ff"}
+                          >
+                            Follow-up
+                          </button>
+
+                          {!appt.review && (
+                            <button
+                              onClick={() => setReviewModal({ open: true, appointmentId: appt._id, rating: 5, comment: "" })}
+                              style={{
+                                padding: "8px 16px", borderRadius: "10px",
+                                background: "#fffbeb", border: "1px solid #fde68a",
+                                color: "#d97706", fontSize: "13px", fontWeight: "600",
+                                cursor: "pointer", display: "flex", alignItems: "center", gap: "6px",
+                                transition: "background 0.15s",
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = "#fef3c7"}
+                              onMouseLeave={(e) => e.currentTarget.style.background = "#fffbeb"}
+                            >
+                              <Star size={14} /> Rate
+                            </button>
+                          )}
+                        </>)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
 
+      {/* ── PRESCRIPTION MODAL ── */}
+      {selectedPrescription && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(15,23,42,0.5)",
+          backdropFilter: "blur(4px)", zIndex: 50,
+          display: "flex", alignItems: "center", justifyContent: "center", padding: "16px",
+        }}>
+          <div style={{
+            width: "100%", maxWidth: "560px", background: "#fff",
+            borderRadius: "20px", padding: "28px", maxHeight: "90vh",
+            overflowY: "auto", boxShadow: "0 24px 64px rgba(0,0,0,0.2)",
+            border: "1px solid #dbeafe",
+            fontFamily: "'DM Sans','Segoe UI',sans-serif",
+          }}>
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{
+                  width: "36px", height: "36px", borderRadius: "10px",
+                  background: "linear-gradient(135deg,#2563eb,#38bdf8)",
+                  display: "flex", alignItems: "center", justifyContent: "center", color: "#fff",
+                }}>
+                  <FileText size={16} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "700", color: "#1e3a5f" }}>Prescription</h3>
+                  <p style={{ margin: 0, fontSize: "11px", color: "#94a3b8" }}>Version {selectedPrescription.version}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedPrescription(null)}
+                style={{
+                  width: "32px", height: "32px", borderRadius: "50%",
+                  border: "1px solid #dbeafe", background: "#f8faff",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", color: "#64748b",
+                }}
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Diagnosis */}
+            <div style={{
+              background: "#eff6ff", borderRadius: "12px",
+              padding: "14px 16px", border: "1px solid #bfdbfe", marginBottom: "16px",
+            }}>
+              <p style={{ margin: "0 0 4px", fontSize: "10px", fontWeight: "700", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.07em" }}>Diagnosis</p>
+              <p style={{ margin: 0, fontSize: "14px", color: "#1e3a5f", fontWeight: "500" }}>{selectedPrescription.diagnosis || "N/A"}</p>
+            </div>
+
+            {/* Medicines */}
+            {selectedPrescription.medicines?.length > 0 && (
+              <div style={{ marginBottom: "16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
+                  <Pill size={14} style={{ color: "#2563eb" }} />
+                  <p style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#1e3a5f" }}>Medicines</p>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {selectedPrescription.medicines.map((m, i) => (
+                    <div key={i} style={{
+                      padding: "12px 14px", borderRadius: "10px",
+                      background: "#f8faff", border: "1px solid #dbeafe",
+                      display: "flex", alignItems: "center", gap: "10px",
+                    }}>
+                      <div style={{
+                        width: "26px", height: "26px", borderRadius: "8px",
+                        background: "#eff6ff", border: "1px solid #bfdbfe",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        color: "#2563eb", fontSize: "11px", fontWeight: "700", flexShrink: 0,
+                      }}>{i + 1}</div>
+                      <div>
+                        <p style={{ margin: 0, fontSize: "13px", fontWeight: "600", color: "#1e3a5f" }}>{m.name}</p>
+                        <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#64748b" }}>{m.dosage} · {m.frequency} · {m.duration}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Advice */}
+            {selectedPrescription.advice && (
+              <div style={{
+                background: "#fffbeb", borderRadius: "10px",
+                padding: "12px 14px", border: "1px solid #fde68a", marginBottom: "20px",
+              }}>
+                <p style={{ margin: "0 0 4px", fontSize: "10px", fontWeight: "700", color: "#92400e", textTransform: "uppercase", letterSpacing: "0.07em" }}>Advice</p>
+                <p style={{ margin: 0, fontSize: "13px", color: "#78350f" }}>{selectedPrescription.advice}</p>
+              </div>
+            )}
+
+            <button
+              onClick={() => setSelectedPrescription(null)}
+              style={{
+                width: "100%", padding: "12px", borderRadius: "12px",
+                background: "linear-gradient(135deg,#2563eb,#38bdf8)",
+                color: "#fff", fontSize: "14px", fontWeight: "700",
+                border: "none", cursor: "pointer",
+                boxShadow: "0 4px 14px rgba(37,99,235,0.3)",
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── REVIEW MODAL ── */}
+      {reviewModal.open && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(15,23,42,0.5)",
+          backdropFilter: "blur(4px)", zIndex: 50,
+          display: "flex", alignItems: "center", justifyContent: "center", padding: "16px",
+        }}>
+          <div style={{
+            width: "100%", maxWidth: "440px", background: "#fff",
+            borderRadius: "20px", padding: "28px",
+            boxShadow: "0 24px 64px rgba(0,0,0,0.2)",
+            border: "1px solid #dbeafe",
+            fontFamily: "'DM Sans','Segoe UI',sans-serif",
+          }}>
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{
+                  width: "36px", height: "36px", borderRadius: "10px",
+                  background: "linear-gradient(135deg,#f59e0b,#fbbf24)",
+                  display: "flex", alignItems: "center", justifyContent: "center", color: "#fff",
+                }}>
+                  <Star size={16} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "700", color: "#1e3a5f" }}>Rate Your Visit</h3>
+                  <p style={{ margin: 0, fontSize: "11px", color: "#94a3b8" }}>Share your experience</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setReviewModal({ open: false, appointmentId: null, rating: 5, comment: "" })}
+                style={{
+                  width: "32px", height: "32px", borderRadius: "50%",
+                  border: "1px solid #dbeafe", background: "#f8faff",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", color: "#64748b",
+                }}
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Stars */}
+            <div style={{ marginBottom: "18px" }}>
+              <p style={{ margin: "0 0 10px", fontSize: "13px", fontWeight: "600", color: "#1e3a5f" }}>Rating</p>
+              <div style={{ display: "flex", gap: "8px" }}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => setReviewModal((p) => ({ ...p, rating: star }))}
+                    style={{
+                      width: "42px", height: "42px", borderRadius: "10px",
+                      border: star <= reviewModal.rating ? "none" : "1px solid #dbeafe",
+                      background: star <= reviewModal.rating
+                        ? "linear-gradient(135deg,#f59e0b,#fbbf24)"
+                        : "#f8faff",
+                      color: star <= reviewModal.rating ? "#fff" : "#94a3b8",
+                      fontSize: "18px", cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      boxShadow: star <= reviewModal.rating ? "0 2px 8px rgba(245,158,11,0.3)" : "none",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Comment */}
+            <div style={{ marginBottom: "20px" }}>
+              <p style={{ margin: "0 0 8px", fontSize: "13px", fontWeight: "600", color: "#1e3a5f" }}>Comment</p>
+              <textarea
+                rows={3}
+                placeholder="Share your experience..."
+                value={reviewModal.comment}
+                onChange={(e) => setReviewModal((p) => ({ ...p, comment: e.target.value }))}
+                style={{
+                  width: "100%", padding: "12px 14px", borderRadius: "12px",
+                  border: "1px solid #dbeafe", background: "#f8faff",
+                  fontSize: "13px", color: "#1e3a5f", resize: "none",
+                  outline: "none", boxSizing: "border-box",
+                  fontFamily: "inherit",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                onClick={() => setReviewModal({ open: false, appointmentId: null, rating: 5, comment: "" })}
+                style={{
+                  flex: 1, padding: "12px", borderRadius: "12px",
+                  border: "1px solid #dbeafe", background: "#f8faff",
+                  color: "#64748b", fontSize: "14px", fontWeight: "600", cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitReview}
+                style={{
+                  flex: 2, padding: "12px", borderRadius: "12px",
+                  background: "linear-gradient(135deg,#2563eb,#38bdf8)",
+                  color: "#fff", fontSize: "14px", fontWeight: "700",
+                  border: "none", cursor: "pointer",
+                  boxShadow: "0 4px 14px rgba(37,99,235,0.3)",
+                }}
+              >
+                Submit Review
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CONFIRM DIALOG ── */}
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
         title="Cancel Appointment"
-        message="Are you sure you want to cancel this appointment?"
-        confirmText="Cancel Appointment"
-        isDangerous
+        message="Are you sure you want to cancel this appointment? This action cannot be undone."
         onConfirm={() => {
           cancelAppointment(confirmDialog.appointmentId);
           setConfirmDialog({ isOpen: false, appointmentId: null, action: null });
         }}
         onCancel={() => setConfirmDialog({ isOpen: false, appointmentId: null, action: null })}
       />
-
-      {selectedPrescription && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl bg-white rounded-xl p-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="font-semibold text-blue-900">Prescription (Version {selectedPrescription.version})</h3>
-            <p className="mt-3 text-sm"><strong>Diagnosis:</strong> {selectedPrescription.diagnosis}</p>
-            <div className="mt-3">
-              <p className="font-medium text-sm">Medicines</p>
-              <ul className="list-disc ml-5 text-sm text-gray-700">
-                {selectedPrescription.medicines?.map((m, index) => (
-                  <li key={index}>{m.name} - {m.dosage}, {m.frequency}, {m.duration}</li>
-                ))}
-              </ul>
-            </div>
-            {selectedPrescription.advice && <p className="mt-3 text-sm"><strong>Advice:</strong> {selectedPrescription.advice}</p>}
-            <div className="mt-4 text-right">
-              <button className="px-4 py-2 rounded-lg border" onClick={() => setSelectedPrescription(null)}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {reviewModal.open && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-white rounded-xl p-4">
-            <h3 className="font-semibold text-blue-900">Rate this appointment</h3>
-            <div className="mt-3">
-              <label className="text-sm text-gray-600">Rating (1 to 5)</label>
-              <div className="flex gap-2 mt-2">
-                {[1, 2, 3, 4, 5].map((value) => (
-                  <button key={value} onClick={() => setReviewModal((prev) => ({ ...prev, rating: value }))} className={`p-1 ${reviewModal.rating >= value ? "text-amber-500" : "text-gray-300"}`}>
-                    <Star className="w-5 h-5 fill-current" />
-                  </button>
-                ))}
-              </div>
-              <textarea className="w-full border rounded-lg p-2 mt-3" rows="4" placeholder="Optional comment" value={reviewModal.comment} onChange={(e) => setReviewModal((prev) => ({ ...prev, comment: e.target.value }))} />
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button className="px-4 py-2 rounded-lg border" onClick={() => setReviewModal({ open: false, appointmentId: null, rating: 5, comment: "" })}>Close</button>
-              <button className="px-4 py-2 rounded-lg bg-blue-600 text-white" onClick={submitReview}>Submit</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
