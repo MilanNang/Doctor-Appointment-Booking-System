@@ -42,10 +42,10 @@ export default function Signup() {
     try {
       setLoading(true);
       const res = await API.post("/auth/verify-email", { email, code: verificationCode });
-      dispatch(loginSuccess({ user: res.data, token: res.data.token }));
+      dispatch(loginSuccess(res.data));
       dispatch(setPatientData(res.data));
       dispatch(showToast({ message: "Account created successfully!", type: "success" }));
-      navigate("/patient/");
+      navigate("/patient/profile");
     } catch (err) {
       dispatch(showToast({ message: err.response?.data?.message || "Verification failed", type: "error" }));
     } finally {

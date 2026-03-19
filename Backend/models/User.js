@@ -5,6 +5,7 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  profileImage: { type: String, default: "" },
   role: { type: String, enum: ["patient", "doctor", "admin"], default: "patient" },
   isVerified: { type: Boolean, default: false },         // ✅ email verification
   verificationToken: { type: String },                  // ✅ verification token

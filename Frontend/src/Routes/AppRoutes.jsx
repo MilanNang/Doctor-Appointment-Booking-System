@@ -35,6 +35,7 @@ import ManageAppointments from "../pages/Admin/ManageAppointments";
 import DoctorApproval from "../pages/Admin/DoctorApproval";
 import Reports from "../pages/Admin/Reports";
 import Settings from "../pages/Admin/Seting";
+import AdminProfileSettings from "../pages/Admin/ProfileSettings";
 
 export default function AppRoutes() {
   return (
@@ -70,6 +71,7 @@ export default function AppRoutes() {
 
       <Route path="/admin" element={<ProtectedRoute requiredRole="admin"><AdminLayout /></ProtectedRoute>}>
         <Route index element={<AdminDashboard />} />
+        <Route path="profile" element={<AdminProfileSettings />} />
         <Route path="doctors" element={<ManageDoctors />} />
         <Route path="doctor-approval" element={<DoctorApproval />} />
         <Route path="patients" element={<ManagePatients />} />

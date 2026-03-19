@@ -405,6 +405,203 @@ export const getAllAppointments = async (req, res) => {
   }
 };
 
+export const adminUpdateAppointmentStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const validStatuses = Object.values(APPOINTMENT_STATUS);
+
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+
+    const appointment = await findAppointmentById(req.params.id, [
+      { path: "patient", select: "name email _id" },
+      { path: "doctor", select: "user", populate: { path: "user", select: "name email _id" } }
+    ]);
+
+    if (!appointment) return res.status(404).json({ message: "Appointment not found" });
+
+    const fromStatus = appointment.status;
+    appointment.status = status;
+    await appointment.save();
+
+    if ([APPOINTMENT_STATUS.CANCELLED, APPOINTMENT_STATUS.NO_SHOW].includes(status) && appointment.slotId) {
+      await releaseSlotIfExists(appointment.slotId);
+    }
+
+    await logAudit({
+      appointmentId: appointment._id,
+      actorId: req.user._id,
+      actorRole: "admin",
+      action: "admin-status-update",
+      fromStatus,
+      toStatus: status
+    });
+
+    if (req.io) {
+      req.io.emit("appointmentStatusUpdate", {
+        appointmentId: appointment._id,
+        status: appointment.status,
+        patientId: appointment.patient?._id,
+        doctorId: appointment.doctor?._id
+      });
+    }
+
+    res.json({ message: "Appointment status updated", appointment });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const adminCancelAppointment = async (req, res) => {
+  try {
+    const { reason = "Cancelled by admin" } = req.body || {};
+
+    const appointment = await findAppointmentById(req.params.id, [
+      { path: "patient", select: "name email _id" },
+      { path: "doctor", select: "user", populate: { path: "user", select: "name email _id" } }
+    ]);
+
+    if (!appointment) return res.status(404).json({ message: "Appointment not found" });
+
+    const fromStatus = appointment.status;
+    appointment.status = APPOINTMENT_STATUS.CANCELLED;
+    await appointment.save();
+
+    if (appointment.slotId) {
+      await releaseSlotIfExists(appointment.slotId);
+    }
+
+    await logAudit({
+      appointmentId: appointment._id,
+      actorId: req.user._id,
+      actorRole: "admin",
+      action: "admin-cancel-appointment",
+      fromStatus,
+      toStatus: APPOINTMENT_STATUS.CANCELLED,
+      metadata: { reason }
+    });
+
+    const doctorName = appointment.doctor?.user?.name || "Doctor";
+    const patientName = appointment.patient?.name || "Patient";
+
+    try {
+      if (appointment.patient?.email) {
+        await sendEmail(
+          appointment.patient.email,
+          "Appointment Cancelled by Admin",
+          `<h3>Hello ${patientName},</h3>
+           <p>Your appointment with <b>Dr. ${doctorName}</b> on <b>${appointment.date}</b> at <b>${appointment.time}</b> has been cancelled by admin.</p>
+           <p>Reason: ${reason}</p>`
+        );
+      }
+
+      if (appointment.doctor?.user?.email) {
+        await sendEmail(
+          appointment.doctor.user.email,
+          "Appointment Cancelled by Admin",
+          `<h3>Hello Dr. ${doctorName},</h3>
+           <p>The appointment with <b>${patientName}</b> on <b>${appointment.date}</b> at <b>${appointment.time}</b> has been cancelled by admin.</p>
+           <p>Reason: ${reason}</p>`
+        );
+      }
+    } catch (emailError) {
+      console.error("Admin cancel email failed:", emailError.message);
+    }
+
+    if (req.io) {
+      req.io.emit("appointmentStatusUpdate", {
+        appointmentId: appointment._id,
+        status: appointment.status,
+        patientId: appointment.patient?._id,
+        doctorId: appointment.doctor?._id
+      });
+    }
+
+    res.json({ message: "Appointment cancelled by admin", appointment });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const adminDeleteAppointment = async (req, res) => {
+  try {
+    const { reason = "Deleted by admin" } = req.body || {};
+
+    const appointment = await findAppointmentById(req.params.id, [
+      { path: "patient", select: "name email _id" },
+      { path: "doctor", select: "user", populate: { path: "user", select: "name email _id" } }
+    ]);
+
+    if (!appointment) return res.status(404).json({ message: "Appointment not found" });
+
+    const appointmentSnapshot = {
+      _id: appointment._id,
+      date: appointment.date,
+      time: appointment.time,
+      patientId: appointment.patient?._id,
+      doctorId: appointment.doctor?._id
+    };
+
+    if (appointment.slotId) {
+      await releaseSlotIfExists(appointment.slotId);
+    }
+
+    await Appointment.deleteOne({ _id: appointment._id });
+
+    await logAudit({
+      appointmentId: appointmentSnapshot._id,
+      actorId: req.user._id,
+      actorRole: "admin",
+      action: "admin-delete-appointment",
+      fromStatus: appointment.status,
+      toStatus: "deleted",
+      metadata: { reason }
+    });
+
+    const doctorName = appointment.doctor?.user?.name || "Doctor";
+    const patientName = appointment.patient?.name || "Patient";
+
+    try {
+      if (appointment.patient?.email) {
+        await sendEmail(
+          appointment.patient.email,
+          "Appointment Deleted by Admin",
+          `<h3>Hello ${patientName},</h3>
+           <p>Your appointment with <b>Dr. ${doctorName}</b> on <b>${appointment.date}</b> at <b>${appointment.time}</b> has been deleted by admin.</p>
+           <p>Reason: ${reason}</p>`
+        );
+      }
+
+      if (appointment.doctor?.user?.email) {
+        await sendEmail(
+          appointment.doctor.user.email,
+          "Appointment Deleted by Admin",
+          `<h3>Hello Dr. ${doctorName},</h3>
+           <p>The appointment with <b>${patientName}</b> on <b>${appointment.date}</b> at <b>${appointment.time}</b> has been deleted by admin.</p>
+           <p>Reason: ${reason}</p>`
+        );
+      }
+    } catch (emailError) {
+      console.error("Admin delete email failed:", emailError.message);
+    }
+
+    if (req.io) {
+      req.io.emit("appointmentDeletedByAdmin", {
+        appointmentId: appointmentSnapshot._id,
+        date: appointmentSnapshot.date,
+        time: appointmentSnapshot.time,
+        patientId: appointmentSnapshot.patientId,
+        doctorId: appointmentSnapshot.doctorId
+      });
+    }
+
+    res.json({ message: "Appointment deleted by admin" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export const updateAppointmentStatus = async (req, res) => {
   try {
     const { status } = req.body;

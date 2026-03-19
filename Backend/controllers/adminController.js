@@ -3,6 +3,23 @@ import Doctor from "../models/Doctor.js";
 import { sendEmail } from "../utils/sendEmail.js";
 import bcrypt from "bcryptjs";
 
+const sendDeletionEmail = async ({ email, name, role }) => {
+  if (!email) return;
+
+  const roleTitle = role === "doctor" ? "Doctor" : "Patient";
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #dc2626;">Account Removed by Admin</h2>
+      <p>Dear ${name || roleTitle},</p>
+      <p>Your ${roleTitle.toLowerCase()} account has been removed by the admin team.</p>
+      <p>If you believe this action was made in error, please contact support.</p>
+      <p>Best regards,<br/>Doctor Appointment System Admin</p>
+    </div>
+  `;
+
+  await sendEmail(email, `${roleTitle} Account Deleted`, html);
+};
+
 export const getAllDoctors = async (req, res) => {
   try {
     const doctors = await Doctor.find().populate("user", "name email role");
@@ -14,10 +31,36 @@ export const getAllDoctors = async (req, res) => {
 
 export const deleteDoctor = async (req, res) => {
   try {
-    const doctor = await Doctor.findById(req.params.id);
+    const doctor = await Doctor.findById(req.params.id).populate("user", "name email _id");
     if (!doctor) return res.status(404).json({ message: "Doctor not found" });
 
+    const linkedUserId = doctor.user?._id || doctor.user || doctor.userId;
+    const linkedUser = linkedUserId ? await User.findById(linkedUserId).select("name email") : null;
+
+    try {
+      await sendDeletionEmail({
+        email: linkedUser?.email || doctor.user?.email,
+        name: linkedUser?.name || doctor.user?.name,
+        role: "doctor"
+      });
+    } catch (emailError) {
+      console.error("Failed to send doctor deletion email:", emailError.message);
+    }
+
     await doctor.deleteOne();
+
+    if (linkedUserId) {
+      await User.deleteOne({ _id: linkedUserId });
+    }
+
+    if (req.io && linkedUserId) {
+      req.io.emit("adminAccountDeleted", {
+        role: "doctor",
+        userId: linkedUserId,
+        message: "Doctor account deleted by admin"
+      });
+    }
+
     res.json({ message: "Doctor deleted successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -35,10 +78,29 @@ export const getAllPatients = async (req, res) => {
 
 export const deletePatient = async (req, res) => {
   try {
-    const patient = await User.findById(req.params.id);
+    const patient = await User.findById(req.params.id).select("name email role");
     if (!patient) return res.status(404).json({ message: "Patient not found" });
 
+    try {
+      await sendDeletionEmail({
+        email: patient.email,
+        name: patient.name,
+        role: "patient"
+      });
+    } catch (emailError) {
+      console.error("Failed to send patient deletion email:", emailError.message);
+    }
+
     await patient.deleteOne();
+
+    if (req.io) {
+      req.io.emit("adminAccountDeleted", {
+        role: "patient",
+        userId: req.params.id,
+        message: "Patient account deleted by admin"
+      });
+    }
+
     res.json({ message: "Patient deleted successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });

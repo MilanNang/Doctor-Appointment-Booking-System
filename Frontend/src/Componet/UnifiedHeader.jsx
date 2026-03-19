@@ -171,9 +171,17 @@ export default function UnifiedHeader() {
 
         {/* Profile Avatar */}
         <div className="flex items-center gap-3 pl-4 border-l border-blue-100">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 shadow-md flex items-center justify-center text-white font-bold text-sm">
-            {getInitials(user?.name)}
-          </div>
+          {user?.profileImage ? (
+            <img
+              src={user.profileImage}
+              alt="Profile"
+              className="w-9 h-9 rounded-full border border-blue-100 shadow-md object-cover"
+            />
+          ) : (
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 shadow-md flex items-center justify-center text-white font-bold text-sm">
+              {getInitials(user?.name)}
+            </div>
+          )}
           <div className="hidden sm:block">
             <p className="text-sm font-medium text-slate-700">{user?.name}</p>
             <p className="text-xs text-slate-400 capitalize">{user?.role}</p>

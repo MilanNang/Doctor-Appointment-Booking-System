@@ -137,6 +137,7 @@ export const loginUser = async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
+      profileImage: user.profileImage,
       role: user.role,
       token: generateToken(user._id, user.role),
       mustResetPassword: false,
@@ -167,6 +168,7 @@ export const verifyAuth = async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
+      profileImage: user.profileImage,
       role: user.role,
       token: generateToken(user._id, user.role),
     });
@@ -238,6 +240,7 @@ export const resetPassword = async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
+      profileImage: user.profileImage,
       role: user.role,
       token: token,
       message: "Password reset successfully",
@@ -261,7 +264,7 @@ export const updateProfile = async (req, res) => {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const { name, email, password, medicalHistory } = req.body;
+    const { name, email, password, medicalHistory, profileImage } = req.body;
 
     if (email && email !== user.email) {
       const exists = await User.findOne({ email });
@@ -271,6 +274,7 @@ export const updateProfile = async (req, res) => {
 
     if (name) user.name = name;
     if (password) user.password = password; // will be hashed by pre-save hook
+    if (typeof profileImage === "string") user.profileImage = profileImage;
 
     if (medicalHistory && user.role === 'patient') {
       user.medicalHistory = { ...user.medicalHistory, ...medicalHistory };
@@ -282,6 +286,7 @@ export const updateProfile = async (req, res) => {
       _id: updated._id,
       name: updated.name,
       email: updated.email,
+      profileImage: updated.profileImage,
       medicalHistory: updated.medicalHistory,
       role: updated.role,
       token: generateToken(updated._id, updated.role),
