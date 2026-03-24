@@ -235,7 +235,7 @@ export default function Signup() {
           </p>
         </div>
 
-        {/* Fields */}
+       
         <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "22px" }}>
 
           {/* Full Name */}
